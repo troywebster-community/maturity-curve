@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community Maturity Curve</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:          oklch(0.985 0.002 80);
+  --fg:          oklch(0.16 0.03 260);
+  --primary:     oklch(0.42 0.16 250);
+  --primary-lt:  oklch(0.93 0.04 250);
+  --primary-mid: oklch(0.72 0.10 250);
+  --muted:       oklch(0.52 0.02 260);
+  --border:      oklch(0.90 0.006 80);
+  --surface:     oklch(0.975 0.003 80);
+  --dark:        oklch(0.18 0.025 260);
+  --shadow-sm:   0 1px 3px oklch(0 0 0/.06), 0 2px 8px oklch(0.45 0.12 245/.05);
+  --shadow-md:   0 4px 20px oklch(0.45 0.12 245/.12), 0 1px 4px oklch(0 0 0/.06);
+  --shadow-lg:   0 16px 48px oklch(0 0 0/.18);
+  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:18px; --r-2xl:22px;
+  --t: 130ms cubic-bezier(0.16,1,0.3,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;}
+.wrap{max-width:1160px;margin:0 auto;padding:0 28px;}
+
+/* ── HERO ── */
+.hero{
+  padding:72px 0 56px;border-bottom:1px solid var(--border);
+  background:
+    radial-gradient(ellipse at 10% 30%, oklch(0.78 0.06 250/.30) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 70%, oklch(0.88 0.04 60/.25) 0%, transparent 50%),
+    var(--bg);
+}
+.hero-label{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--primary);margin-bottom:14px;}
+.hero h1{font-size:44px;font-weight:700;line-height:1.1;letter-spacing:-.022em;color:var(--fg);max-width:640px;margin-bottom:14px;}
+.hero p{font-size:17px;line-height:1.65;color:var(--muted);max-width:480px;}
+
+/* ── PRINCIPLES ── */
+.principles{padding:56px 0;border-bottom:1px solid var(--border);}
+.section-eyebrow{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--primary);margin-bottom:10px;}
+.section-h2{font-size:24px;font-weight:700;letter-spacing:-.015em;color:var(--fg);margin-bottom:6px;}
+.section-p{font-size:14px;line-height:1.65;color:var(--muted);max-width:560px;}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:28px;}
+.pcard{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--r-lg);padding:18px 16px;
+  box-shadow:var(--shadow-sm);
+  transition:border-color var(--t),box-shadow var(--t),transform var(--t);
+}
+.pcard:hover{border-color:var(--primary-mid);box-shadow:var(--shadow-md);transform:translateY(-2px);}
+.pcard-n{font-size:10px;font-weight:700;letter-spacing:.10em;color:var(--primary);margin-bottom:8px;display:block;}
+.pcard-t{font-size:13px;font-weight:600;color:var(--fg);line-height:1.35;}
+
+/* ── CURVE ── */
+.curve{padding:56px 0 48px;}
+.curve-header{margin-bottom:32px;}
+.curve-header h2{font-size:24px;font-weight:700;letter-spacing:-.015em;color:var(--fg);margin-bottom:6px;}
+.curve-header p{font-size:14px;color:var(--muted);line-height:1.6;max-width:560px;}
+
+/* BARS */
+.bar-labels{display:flex;justify-content:space-between;padding:0 2px;margin-bottom:8px;}
+.bar-label{font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);}
+.bars{
+  display:flex;gap:5px;align-items:flex-end;height:100px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:0 5px 5px;
+}
+.bar{flex:1;cursor:pointer;border-radius:var(--r-sm) var(--r-sm) 3px 3px;transition:filter var(--t),transform var(--t);position:relative;}
+.bar:hover{filter:brightness(1.08);transform:scaleY(1.04);transform-origin:bottom;}
+.bar.active{outline:3px solid var(--primary);outline-offset:2px;}
+.bar-tooltip{
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--dark);color:white;font-size:10px;font-weight:600;
+  white-space:nowrap;padding:4px 8px;border-radius:var(--r-sm);
+  opacity:0;pointer-events:none;transition:opacity var(--t);
+}
+.bar:hover .bar-tooltip{opacity:1;}
+.b1{background:oklch(0.88 0.05 250);height:28%}
+.b2{background:oklch(0.78 0.08 250);height:40%}
+.b3{background:oklch(0.67 0.11 250);height:53%}
+.b4{background:oklch(0.56 0.13 250);height:66%}
+.b5{background:oklch(0.48 0.14 250);height:78%}
+.b6{background:oklch(0.40 0.15 250);height:89%}
+.b7{background:oklch(0.32 0.14 250);height:100%}
+
+/* TABS */
+.tabs{display:flex;gap:5px;margin-top:14px;flex-wrap:wrap;}
+.tab{
+  flex:1;min-width:110px;padding:10px 12px;
+  border-radius:var(--r-md);border:1.5px solid var(--border);
+  background:var(--bg);cursor:pointer;text-align:left;
+  transition:all var(--t);
+}
+.tab:hover{border-color:var(--primary-mid);background:var(--primary-lt);box-shadow:var(--shadow-sm);}
+.tab.active{background:var(--primary);border-color:var(--primary);box-shadow:var(--shadow-md);}
+.tab-n{font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--muted);margin-bottom:3px;}
+.tab.active .tab-n{color:oklch(0.85 0.04 250);}
+.tab-name{font-size:12px;font-weight:600;color:var(--fg);line-height:1.25;}
+.tab.active .tab-name{color:white;}
+.tab-tag{font-size:10px;color:var(--muted);margin-top:2px;}
+.tab.active .tab-tag{color:oklch(0.80 0.05 250);}
+
+/* PANEL */
+.panel{
+  margin-top:20px;border:1px solid var(--border);
+  border-radius:var(--r-2xl);overflow:hidden;
+  box-shadow:var(--shadow-sm);
+  animation:rise 280ms cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.panel-head{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:28px 28px 22px;border-bottom:1px solid var(--border);background:var(--surface);
+}
+.pdot{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;}
+.p-eyebrow{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.p-name{font-size:22px;font-weight:700;letter-spacing:-.018em;color:var(--fg);margin-bottom:4px;}
+.p-desc{font-size:13px;color:var(--muted);line-height:1.65;max-width:580px;}
+
+/* USE CASE GRID */
+.uc-area{padding:20px 28px 28px;}
+.uc-grid-label{
+  font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.uc-grid-label em{
+  font-style:normal;font-size:10px;font-weight:500;
+  color:var(--primary);background:var(--primary-lt);
+  border-radius:999px;padding:2px 8px;letter-spacing:0;text-transform:none;
+}
+.uc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+
+/* USE CASE CARD */
+.uc-card{
+  background:var(--bg);
+  border:1.5px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:16px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  transition:all var(--t);
+  box-shadow:var(--shadow-sm);
+  position:relative;overflow:hidden;
+}
+.uc-card::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,oklch(0.92 0.06 250/.60),transparent 65%);
+  opacity:0;transition:opacity var(--t);border-radius:var(--r-lg);
+}
+.uc-card:hover{
+  border-color:var(--primary);
+  background:var(--primary-lt);
+  box-shadow:var(--shadow-md);
+  transform:translateY(-2px);
+}
+.uc-card:hover::after{opacity:1;}
+.uc-card:active{transform:translateY(0);box-shadow:var(--shadow-sm);}
+.uc-card-inner{flex:1;min-width:0;pointer-events:none;position:relative;z-index:1;}
+body.edit-mode .uc-card-inner{pointer-events:auto;}
+.uc-name{font-size:13px;font-weight:600;color:var(--fg);line-height:1.3;}
+.uc-badge{
+  display:inline-flex;align-items:center;gap:3px;margin-top:5px;
+  font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--primary);color:white;border-radius:999px;padding:2px 7px;
+}
+.uc-chevron{
+  width:24px;height:24px;border-radius:50%;flex-shrink:0;
+  background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:var(--muted);
+  position:relative;z-index:1;
+  transition:all var(--t);
+}
+.uc-card:hover .uc-chevron{background:var(--primary);border-color:var(--primary);color:white;transform:translateX(2px);}
+
+/* DRAWER */
+.overlay{position:fixed;inset:0;background:oklch(0 0 0/.30);z-index:100;opacity:0;pointer-events:none;transition:opacity .22s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:480px;max-width:95vw;
+  background:var(--bg);z-index:101;
+  transform:translateX(102%);
+  transition:transform .30s cubic-bezier(0.16,1,0.3,1);
+  display:flex;flex-direction:column;
+  box-shadow:var(--shadow-lg);border-left:1px solid var(--border);
+}
+.drawer.open{transform:translateX(0);}
+.d-head{
+  padding:18px 20px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;
+  background:var(--surface);
+}
+.d-crumb{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--primary);margin-bottom:4px;}
+.d-title{font-size:19px;font-weight:700;letter-spacing:-.01em;color:var(--fg);}
+.d-close{
+  width:28px;height:28px;border-radius:50%;
+  border:1px solid var(--border);background:var(--bg);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:var(--muted);transition:all var(--t);
+}
+.d-close:hover{background:var(--border);color:var(--fg);}
+.d-body{flex:1;overflow-y:auto;padding:22px;}
+.d-sec{margin-bottom:22px;}
+.d-lbl{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block;}
+.d-text{font-size:14px;color:var(--muted);line-height:1.75;}
+.d-tip{background:var(--dark);border-radius:var(--r-lg);padding:14px 16px;display:flex;gap:10px;align-items:flex-start;}
+.d-tip-dot{width:5px;height:5px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:7px;}
+.d-tip-t{font-size:13px;color:oklch(0.75 0.015 260);line-height:1.6;}
+.res-empty{font-size:13px;color:var(--muted);font-style:italic;padding:4px 0 10px;}
+.res-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+.res-card{border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;background:var(--bg);position:relative;transition:all var(--t);}
+.res-card:hover{border-color:var(--primary-mid);box-shadow:var(--shadow-sm);}
+.res-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;border-radius:var(--r-sm);padding:2px 6px;margin-bottom:5px;}
+.b-youtube{background:oklch(0.93 0.07 25);color:oklch(0.45 0.18 25);}
+.b-webinar{background:oklch(0.95 0.05 70);color:oklch(0.48 0.12 70);}
+.b-blog{background:oklch(0.93 0.05 160);color:oklch(0.38 0.12 160);}
+.b-playbook{background:var(--primary-lt);color:var(--primary);}
+.b-toolkit{background:oklch(0.93 0.05 200);color:oklch(0.38 0.12 200);}
+.b-article{background:oklch(0.93 0.05 290);color:oklch(0.42 0.12 290);}
+.b-case-study{background:oklch(0.93 0.05 320);color:oklch(0.42 0.12 320);}
+.b-other{background:var(--surface);color:var(--muted);}
+.res-t{font-size:13px;font-weight:600;color:var(--fg);margin-bottom:2px;}
+.res-d{font-size:12px;color:var(--muted);margin-bottom:6px;line-height:1.5;}
+.res-a{font-size:12px;color:var(--primary);font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:3px;}
+.res-a:hover{text-decoration:underline;}
+.res-del{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all var(--t);}
+.res-del:hover{background:oklch(0.60 0.18 25);color:white;border-color:transparent;}
+body.edit-mode .res-del{display:flex;}
+.add-btn{width:100%;padding:10px;border:1.5px dashed var(--border);border-radius:var(--r-lg);background:transparent;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;color:var(--muted);cursor:pointer;text-align:center;transition:all var(--t);display:none;}
+body.edit-mode .add-btn{display:block;}
+.add-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-lt);}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:oklch(0 0 0/.40);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s;}
+.modal-bg.open{opacity:1;pointer-events:all;}
+.modal{background:var(--bg);border-radius:var(--r-xl);padding:28px;width:440px;max-width:93vw;box-shadow:var(--shadow-lg);transform:scale(.96);transition:transform .20s cubic-bezier(0.16,1,0.3,1);}
+.modal-bg.open .modal{transform:scale(1);}
+.modal h3{font-size:18px;font-weight:700;color:var(--fg);margin-bottom:20px;}
+.fg{margin-bottom:12px;}
+.fg label{display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.fg input,.fg select,.fg textarea{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r-md);font-size:13px;font-family:'Inter',sans-serif;color:var(--fg);background:var(--surface);}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--primary);background:var(--bg);box-shadow:0 0 0 3px oklch(0.42 0.16 250/.12);}
+.fg textarea{resize:vertical;min-height:60px;line-height:1.5;}
+.m-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+.m-cancel{padding:8px 16px;border:1px solid var(--border);border-radius:var(--r-md);background:transparent;font-size:13px;font-family:'Inter',sans-serif;color:var(--muted);cursor:pointer;}
+.m-cancel:hover{background:var(--surface);}
+.m-save{padding:8px 16px;border:none;border-radius:var(--r-md);background:var(--primary);font-size:13px;font-family:'Inter',sans-serif;color:white;font-weight:600;cursor:pointer;transition:opacity var(--t);}
+.m-save:hover{opacity:.88;}
+
+/* FOOTER */
+.footer{background:var(--dark);padding:56px 0;}
+.footer h2{font-size:28px;font-weight:700;letter-spacing:-.015em;color:white;margin-bottom:10px;}
+.footer p{font-size:16px;line-height:1.6;color:oklch(0.58 0.015 260);max-width:440px;margin-bottom:24px;}
+.f-btn{display:inline-flex;align-items:center;padding:10px 20px;border-radius:var(--r-md);border:1px solid oklch(0.35 0.02 260);color:white;font-size:14px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;background:transparent;text-decoration:none;transition:background var(--t);}
+.f-btn:hover{background:oklch(0.26 0.025 260);}
+
+/* EDIT BAR */
+.edit-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--dark);border-radius:999px;padding:9px 18px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-lg);z-index:200;font-size:13px;color:oklch(0.70 0.015 260);border:1px solid oklch(0.28 0.02 260);white-space:nowrap;}
+.e-dot{width:6px;height:6px;border-radius:50%;background:var(--primary);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.e-status{font-size:11px;color:oklch(0.58 0.015 260);margin-left:6px;font-style:italic;}
+.e-btn{background:var(--primary);border:none;border-radius:999px;padding:5px 14px;color:white;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;text-decoration:none;display:inline-block;}
+
+/* EDIT MODE */
+[contenteditable]{outline:none;}
+body.edit-mode [contenteditable="true"]{cursor:text;}
+body.edit-mode [contenteditable="true"]:hover,
+body.edit-mode [contenteditable="true"]:focus{
+  background:oklch(0.97 0.015 80);border-radius:3px;
+  outline:1.5px dashed oklch(0.65 0.10 70);outline-offset:1px;
+}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+
+<div class="drawer" id="drawer">
+  <div class="d-head">
+    <div>
+      <div class="d-crumb" id="dCrumb"></div>
+      <div class="d-title" id="dTitle"></div>
+    </div>
+    <button class="d-close" onclick="closeDrawer()">&#x2715;</button>
+  </div>
+  <div class="d-body" id="dBody"></div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>Add a resource</h3>
+    <div class="fg">
+      <label>Type</label>
+      <select id="rType">
+        <option value="youtube">YouTube video</option>
+        <option value="webinar">Webinar</option>
+        <option value="blog">Blog post</option>
+        <option value="playbook">Playbook</option>
+        <option value="toolkit">Toolkit</option>
+        <option value="article">Article</option>
+        <option value="case-study">Case study</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="fg"><label>Title</label><input type="text" id="rTitle" placeholder="Resource title"></div>
+    <div class="fg"><label>Description <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label><textarea id="rDesc" placeholder="Brief description"></textarea></div>
+    <div class="fg"><label>URL</label><input type="url" id="rUrl" placeholder="https://..."></div>
+    <div class="fg"><label>Link label</label><input type="text" id="rLabel" placeholder="e.g. Watch video, Read playbook"></div>
+    <div class="m-actions">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-save" onclick="saveResource()">Add resource</button>
+    </div>
+  </div>
+</div>
+
+<div class="edit-bar" id="editBar" style="display:none">
+  <div class="e-dot"></div>
+  <span>Edit mode — click any text to edit</span>
+  <span class="e-status" id="eStatus"></span>
+  <a class="e-btn" href="/">Done</a>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="wrap">
+    <p class="hero-label" id="e-eyebrow">Community Platform</p>
+    <h1 id="e-h1">Your texting program, every stage</h1>
+    <p id="e-hsub">From first opt-in to fully integrated AI — find where you are and see what comes next.</p>
+  </div>
+</div>
+
+<!-- PRINCIPLES -->
+<div class="principles">
+  <div class="wrap">
+    <p class="section-eyebrow" id="e-pEyebrow">Guiding principles</p>
+    <h2 class="section-h2" id="e-pH2">What makes great text programs</h2>
+    <p class="section-p" id="e-pSub">Keep these in mind across every phase.</p>
+    <div class="pgrid" id="pgrid"></div>
+  </div>
+</div>
+
+<!-- CURVE -->
+<div class="curve">
+  <div class="wrap">
+    <div class="curve-header">
+      <p class="section-eyebrow" id="e-cEyebrow">Maturity curve</p>
+      <h2 id="e-cH2">Where are you today?</h2>
+      <p id="e-cSub">Select a phase to see what it involves and what to focus on next.</p>
+    </div>
+
+    <div class="bar-labels">
+      <span class="bar-label">Getting started</span>
+      <span class="bar-label">Building momentum</span>
+      <span class="bar-label">Advanced</span>
+    </div>
+    <div class="bars" id="bars">
+      <div class="bar b1" data-i="0"><div class="bar-tooltip">01 Launch</div></div>
+      <div class="bar b2" data-i="1"><div class="bar-tooltip">02 First 90 days</div></div>
+      <div class="bar b3" data-i="2"><div class="bar-tooltip">03 Audience growth</div></div>
+      <div class="bar b4" data-i="3"><div class="bar-tooltip">04 Engagement</div></div>
+      <div class="bar b5" data-i="4"><div class="bar-tooltip">05 Segmentation</div></div>
+      <div class="bar b6" data-i="5"><div class="bar-tooltip">06 Advanced</div></div>
+      <div class="bar b7" data-i="6"><div class="bar-tooltip">07 AI integrated</div></div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div id="panel"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="wrap">
+    <h2 id="e-fH2">Not sure where to start?</h2>
+    <p id="e-fSub">Your CSM can walk you through where you are and what to focus on next.</p>
+    <a class="f-btn" href="mailto:yourfriends@community.com">Talk to your CSM</a>
+  </div>
+</div>
+
+<script>
+// ── CONFIG (server-injected) ──────────────────────────────────────
+const EDITABLE = __EDITABLE__;
+
+// ── STATE ─────────────────────────────────────────────────────────
+let data = { static: {}, principles: [], phases: [] };
+let activePhase = 0, dPI = null, dUI = null, addFor = null;
+let saveTimer = null;
+
+const STATIC_IDS = ['e-eyebrow','e-h1','e-hsub','e-pEyebrow','e-pH2','e-pSub','e-cEyebrow','e-cH2','e-cSub','e-fH2','e-fSub'];
+
+// ── SAVE ──────────────────────────────────────────────────────────
+function scheduleSave() {
+  if (!EDITABLE) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  setStatus('Saving…');
+  saveTimer = setTimeout(saveNow, 400);
+}
+async function saveNow() {
+  if (!EDITABLE) return;
+  try {
+    const res = await fetch('/api/data', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('save failed');
+    setStatus('Saved');
+    setTimeout(() => setStatus(''), 1200);
+  } catch (e) {
+    setStatus('Save error');
+  }
+}
+function setStatus(s) {
+  const el = document.getElementById('eStatus');
+  if (el) el.textContent = s;
+}
+
+// ── STATIC TEXT ───────────────────────────────────────────────────
+function applyStaticText() {
+  STATIC_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (data.static[id] != null) el.textContent = data.static[id];
+    el.contentEditable = EDITABLE ? 'true' : 'false';
+    el.addEventListener('blur', () => {
+      const v = el.innerText.trim();
+      if (data.static[id] !== v) {
+        data.static[id] = v;
+        scheduleSave();
+      }
+    });
+  });
+}
+
+// ── PRINCIPLES ────────────────────────────────────────────────────
+function renderPrinciples() {
+  const g = document.getElementById('pgrid');
+  g.innerHTML = data.principles.map((p, i) => `
+    <div class="pcard">
+      <span class="pcard-n">${String(i + 1).padStart(2, '0')}</span>
+      <div class="pcard-t" contenteditable="${EDITABLE}" data-pf="t" data-pi="${i}">${escapeHtml(p.t)}</div>
+    </div>`).join('');
+  g.querySelectorAll('[data-pf]').forEach(el =>
+    el.addEventListener('blur', () => {
+      const idx = +el.dataset.pi, f = el.dataset.pf, v = el.innerText.trim();
+      if (data.principles[idx][f] !== v) {
+        data.principles[idx][f] = v;
+        scheduleSave();
+      }
+    }));
+}
+
+// ── TABS ──────────────────────────────────────────────────────────
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = data.phases.map((p, i) => `
+    <div class="tab${i === activePhase ? ' active' : ''}" data-i="${i}">
+      <span class="tab-n">${escapeHtml(p.n)}</span>
+      <span class="tab-name">${escapeHtml(p.name)}</span>
+      <span class="tab-tag">${escapeHtml(p.tag)}</span>
+    </div>`).join('');
+  document.querySelectorAll('.tab').forEach(t =>
+    t.addEventListener('click', () => setPhase(+t.dataset.i)));
+}
+
+// ── PANEL ─────────────────────────────────────────────────────────
+function renderPanel(i) {
+  const p = data.phases[i];
+  const E = (f, extra) => `contenteditable="${EDITABLE}" data-df="${f}" data-di="${i}"${extra || ''}`;
+  const cols = p.uc.length <= 4 ? 2 : 3;
+
+  document.getElementById('panel').innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="pdot" style="background:${p.color}">${escapeHtml(p.n)}</div>
+        <div>
+          <div class="p-eyebrow">Phase ${escapeHtml(p.n)} · <span ${E('tag')}>${escapeHtml(p.tag)}</span></div>
+          <div class="p-name" ${E('name')}>${escapeHtml(p.name)}</div>
+          <div class="p-desc" ${E('desc')}>${escapeHtml(p.desc)}</div>
+        </div>
+      </div>
+      <div class="uc-area">
+        <div class="uc-grid-label">Use cases <em>tap a card to explore</em></div>
+        <div class="uc-grid" style="grid-template-columns:repeat(${cols},1fr)" id="ucGrid">
+          ${p.uc.map((uc, ui) => `
+            <div class="uc-card" data-pi="${i}" data-ui="${ui}">
+              <div class="uc-card-inner">
+                <div class="uc-name" ${E('ucName', ` data-ui="${ui}"`)}>${escapeHtml(uc.t)}</div>
+                ${uc.res.length ? `<span class="uc-badge">${uc.res.length} resource${uc.res.length > 1 ? 's' : ''}</span>` : ''}
+              </div>
+              <div class="uc-chevron">&#x203A;</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('ucGrid').addEventListener('click', e => {
+    const card = e.target.closest('.uc-card');
+    if (!card) return;
+    if (EDITABLE && e.target.getAttribute('contenteditable') === 'true') return;
+    openDrawer(+card.dataset.pi, +card.dataset.ui);
+  });
+
+  document.querySelectorAll('#panel [data-df]').forEach(el =>
+    el.addEventListener('blur', () => {
+      const f = el.dataset.df, idx = +el.dataset.di, v = el.innerText.trim();
+      let changed = false;
+      if (f === 'name' && data.phases[idx].name !== v) {
+        data.phases[idx].name = v;
+        const t = document.querySelector(`.tab[data-i="${idx}"] .tab-name`);
+        if (t) t.textContent = v;
+        changed = true;
+      }
+      if (f === 'tag' && data.phases[idx].tag !== v) {
+        data.phases[idx].tag = v;
+        const t = document.querySelector(`.tab[data-i="${idx}"] .tab-tag`);
+        if (t) t.textContent = v;
+        changed = true;
+      }
+      if (f === 'desc' && data.phases[idx].desc !== v) {
+        data.phases[idx].desc = v;
+        changed = true;
+      }
+      if (f === 'ucName') {
+        const ui = +el.dataset.ui;
+        if (data.phases[idx].uc[ui].t !== v) {
+          data.phases[idx].uc[ui].t = v;
+          changed = true;
+        }
+      }
+      if (changed) scheduleSave();
+    }));
+}
+
+// ── DRAWER ────────────────────────────────────────────────────────
+function openDrawer(pi, ui) {
+  dPI = pi; dUI = ui;
+  renderDrawer(pi, ui);
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  dPI = dUI = null;
+}
+function renderDrawer(pi, ui) {
+  const p = data.phases[pi], uc = p.uc[ui];
+  const E = (f) => `contenteditable="${EDITABLE}" data-df="${f}" data-di="${pi}" data-ui="${ui}"`;
+  document.getElementById('dCrumb').textContent = p.name.toUpperCase();
+  document.getElementById('dTitle').textContent = uc.t;
+
+  const resHTML = uc.res.length
+    ? uc.res.map((r, ri) => `
+        <div class="res-card">
+          <button class="res-del" onclick="delRes(${pi},${ui},${ri})">&#x2715;</button>
+          <span class="res-badge b-${escapeAttr(r.type)}">${escapeHtml(String(r.type).replace('-', ' '))}</span>
+          <div class="res-t">${escapeHtml(r.title)}</div>
+          ${r.desc ? `<div class="res-d">${escapeHtml(r.desc)}</div>` : ''}
+          <a class="res-a" href="${escapeAttr(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.label)} <span style="font-size:9px">&#x2197;</span></a>
+        </div>`).join('')
+    : `<div class="res-empty">No resources yet.</div>`;
+
+  document.getElementById('dBody').innerHTML = `
+    <div class="d-sec">
+      <span class="d-lbl">About</span>
+      <div class="d-text" ${E('body')}>${escapeHtml(uc.body)}</div>
+    </div>
+    <div class="d-sec">
+      <span class="d-lbl">Tip</span>
+      <div class="d-tip"><div class="d-tip-dot"></div><div class="d-tip-t" ${E('tip')}>${escapeHtml(uc.tip)}</div></div>
+    </div>
+    <div class="d-sec">
+      <span class="d-lbl">Resources</span>
+      <div class="res-list">${resHTML}</div>
+      <button class="add-btn" onclick="openModal(${pi},${ui})">+ Add a resource</button>
+    </div>`;
+
+  document.querySelectorAll('#dBody [data-df]').forEach(el => {
+    el.addEventListener('blur', () => {
+      const f = el.dataset.df, _pi = +el.dataset.di, _ui = +el.dataset.ui, v = el.innerText.trim();
+      if (f === 'body' && data.phases[_pi].uc[_ui].body !== v) {
+        data.phases[_pi].uc[_ui].body = v;
+        scheduleSave();
+      }
+      if (f === 'tip' && data.phases[_pi].uc[_ui].tip !== v) {
+        data.phases[_pi].uc[_ui].tip = v;
+        scheduleSave();
+      }
+    });
+  });
+}
+
+// ── RESOURCES ─────────────────────────────────────────────────────
+function openModal(pi, ui) {
+  if (!EDITABLE) return;
+  addFor = { pi, ui };
+  ['rTitle', 'rDesc', 'rUrl', 'rLabel'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('rType').value = 'youtube';
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('open'); addFor = null; }
+function saveResource() {
+  if (!addFor) return;
+  const { pi, ui } = addFor;
+  const title = document.getElementById('rTitle').value.trim();
+  const url = document.getElementById('rUrl').value.trim();
+  if (!title || !url) { alert('Please add a title and URL.'); return; }
+  data.phases[pi].uc[ui].res.push({
+    type: document.getElementById('rType').value,
+    title,
+    desc: document.getElementById('rDesc').value.trim(),
+    url,
+    label: document.getElementById('rLabel').value.trim() || 'View resource'
+  });
+  scheduleSave();
+  closeModal();
+  renderPanel(activePhase);
+  renderDrawer(pi, ui);
+}
+function delRes(pi, ui, ri) {
+  if (!EDITABLE) return;
+  data.phases[pi].uc[ui].res.splice(ri, 1);
+  scheduleSave();
+  renderPanel(activePhase);
+  renderDrawer(pi, ui);
+}
+
+// ── PHASE ─────────────────────────────────────────────────────────
+function setPhase(i) {
+  activePhase = i;
+  document.querySelectorAll('.tab').forEach((t, j) => t.classList.toggle('active', j === i));
+  document.querySelectorAll('.bar').forEach((b, j) => b.classList.toggle('active', j === i));
+  renderPanel(i);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+// ── INIT ──────────────────────────────────────────────────────────
+async function init() {
+  if (EDITABLE) {
+    document.body.classList.add('edit-mode');
+    document.getElementById('editBar').style.display = 'flex';
+  }
+  try {
+    const res = await fetch('/api/data');
+    data = await res.json();
+  } catch (e) {
+    console.error('Failed to load data', e);
+  }
+  applyStaticText();
+  renderPrinciples();
+  renderTabs();
+  setPhase(0);
+
+  document.querySelectorAll('.bar').forEach(b =>
+    b.addEventListener('click', () => setPhase(+b.dataset.i)));
+  document.getElementById('modalBg').addEventListener('click', function (e) {
+    if (e.target === this) closeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (document.getElementById('modalBg').classList.contains('open')) closeModal();
+      else if (document.getElementById('drawer').classList.contains('open')) closeDrawer();
+    }
+  });
+}
+init();
+</script>
+</body>
+</html>
