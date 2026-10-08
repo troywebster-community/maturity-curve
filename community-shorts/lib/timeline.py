@@ -17,31 +17,87 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9%$]+", "", s.lower())
 
 
-def snap_ranges(ranges: list[dict], words: list[dict], source_duration: float) -> list[dict]:
-    """Move each range edge onto the nearest word edge, then pad. Never cut inside a word."""
+def snap_ranges(ranges: list[dict], words: list[dict], source_duration: float,
+                envelope: "Envelope | None" = None) -> list[dict]:
+    """Move each range edge onto a word edge, then pad. Never cut inside a word.
+
+    start -> the word starting nearest the given start.
+    end   -> the end of the last word that starts before the given end.
+    With an audio envelope, edges then slide outward through any still-audible sound
+    (word timings drift; the waveform does not), stopping short of the neighbouring word.
+    """
     out = []
     for r in ranges:
         a, b = float(r["start"]), float(r["end"])
         if b <= a:
             raise ValueError(f"range end before start: {r}")
         starts = [w for w in words if abs(w["start"] - a) <= SNAP_WINDOW]
-        ends = [w for w in words if abs(w["end"] - b) <= SNAP_WINDOW]
+        inside = [w for w in words if a - 0.15 <= w["start"] < b - 0.05]
+        prev_end, next_start = 0.0, source_duration
         if starts:
             first = min(starts, key=lambda w: abs(w["start"] - a))
-            prev_end = max([w["end"] for w in words if w["end"] <= first["start"]], default=0.0)
+            before = [w for w in words if w["start"] < first["start"]]
+            if before:
+                prev = max(before, key=lambda w: w["start"])
+                # ASR end times can overlap the next word; never reach back past real silence
+                prev_end = prev["end"] if prev["end"] <= first["start"] - 0.08 else first["start"] - 0.06
+            else:
+                prev_end = 0.0
             a = max(first["start"] - PAD_IN, (prev_end + first["start"]) / 2, 0.0)
-        if ends:
-            last = min(ends, key=lambda w: abs(w["end"] - b))
-            next_start = min([w["start"] for w in words if w["start"] >= last["end"]], default=source_duration)
+        if inside:
+            last = max(inside, key=lambda w: w["start"])
+            next_start = min([w["start"] for w in words if w["start"] > last["start"]], default=source_duration)
             b = min(last["end"] + PAD_OUT, (last["end"] + next_start) / 2, source_duration)
-        # A snap must never leave a word half inside the range.
+        if envelope is not None:
+            a = envelope.quiet_before(a, floor=prev_end)
+            b = envelope.quiet_after(b, ceiling=next_start - 0.03)
+        # An edge that lands inside a neighbouring word gives that word up, never half of it.
+        first_s = first["start"] if starts else None
+        last_s = last["start"] if inside else None
         for w in words:
             if w["start"] < a < w["end"]:
-                a = w["start"] - 0.02
+                a = min(w["end"], first_s) if first_s is not None and w["start"] < first_s else w["start"] - 0.02
             if w["start"] < b < w["end"]:
-                b = w["end"] + 0.02
+                b = max(w["start"] - 0.01, a + 0.1) if last_s is not None and w["start"] > last_s else w["end"] + 0.02
+        if b - a < 0.15:
+            raise ValueError(f"range {r['start']}-{r['end']} holds no complete word after snapping")
         out.append({**r, "start": round(max(0.0, a), 3), "end": round(min(b, source_duration), 3)})
     return out
+
+
+class Envelope:
+    """10 ms RMS envelope of the source audio, for nudging cuts into real silence."""
+
+    def __init__(self, source, step: float = 0.01):
+        import array
+        import math
+        import subprocess
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(source), "-map", "0:a:0", "-ac", "1",
+                              "-ar", "8000", "-f", "s16le", "-"], capture_output=True).stdout
+        pcm = array.array("h", raw)
+        n = int(8000 * step)
+        self.step = step
+        self.rms = [math.sqrt(sum(x * x for x in pcm[i:i + n]) / n) for i in range(0, len(pcm) - n, n)]
+        loud = sorted(self.rms)
+        floor = loud[len(loud) // 10] if loud else 0
+        speech = loud[len(loud) * 7 // 10] if loud else 1
+        self.threshold = max(floor * 3, speech * 0.12, 60)
+
+    def _loud(self, t: float) -> bool:
+        i = int(t / self.step)
+        return 0 <= i < len(self.rms) and self.rms[i] > self.threshold
+
+    def quiet_after(self, t: float, ceiling: float, limit: float = 0.35) -> float:
+        end = min(ceiling, t + limit)
+        while t < end and self._loud(t):
+            t += self.step
+        return t
+
+    def quiet_before(self, t: float, floor: float, limit: float = 0.25) -> float:
+        start = max(floor, t - limit)
+        while t > start and self._loud(t - self.step):
+            t -= self.step
+        return t
 
 
 def output_words(ranges: list[dict], words: list[dict], corrections: dict[str, str]) -> list[dict]:

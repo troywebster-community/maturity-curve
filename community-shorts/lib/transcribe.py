@@ -93,7 +93,7 @@ def pack(words: list[dict], payload: dict, duration: float) -> str:
 
 def transcribe(video: Path, proj: Path, info: dict, num_speakers: int | None = None,
                language: str | None = None, model: str = "scribe_v1", force: bool = False,
-               import_json: Path | None = None) -> list[dict]:
+               import_json: Path | None = None, engine: str = "elevenlabs") -> list[dict]:
     raw_path = proj / "transcript.json"
     meta_path = proj / "transcript.meta.json"
     fp = _fingerprint(video)
@@ -113,8 +113,14 @@ def transcribe(video: Path, proj: Path, info: dict, num_speakers: int | None = N
             wav = Path(tmp) / "audio.wav"
             run(["ffmpeg", "-y", "-i", str(video), "-map", "0:a:0", "-vn", "-ac", "1", "-ar", "16000",
                  "-c:a", "pcm_s16le", str(wav)])
-            print(f"  uploading audio to ElevenLabs Scribe ({wav.stat().st_size / 1e6:.1f} MB)")
-            payload = call_scribe(wav, num_speakers, language, model)
+            if engine == "local":
+                from .local_asr import transcribe_local
+                print("  transcribing locally (Parakeet via sherpa-onnx)")
+                payload = transcribe_local(wav)
+                model = "parakeet-local"
+            else:
+                print(f"  uploading audio to ElevenLabs Scribe ({wav.stat().st_size / 1e6:.1f} MB)")
+                payload = call_scribe(wav, num_speakers, language, model)
         raw_path.write_text(json.dumps(payload, indent=1))
         meta_path.write_text(json.dumps({"fingerprint": fp, "source": str(video), "model": model}))
     words = flatten_words(payload)

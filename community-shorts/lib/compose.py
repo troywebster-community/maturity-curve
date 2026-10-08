@@ -116,9 +116,37 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .headline { margin-top: 18px; font-size: 92px; line-height: 1.04; font-weight: 800; letter-spacing: -0.035em;
   text-shadow: 0 6px 30px oklch(0.16 0.03 260 / 0.55); }
 .hw { display: inline-block; }
-.em { position: relative; display: inline-block; z-index: 0; margin: 0 8px; }
+.em { position: relative; display: inline-block; z-index: 0; margin: 0 12px; }
 .em::before { content: ""; position: absolute; left: -8px; right: -8px; top: 12%; bottom: 4%; border-radius: 12px;
   background: var(--primary); z-index: -1; }
+
+/* intro, card style: light gradient opener */
+.intro-card-bg { position: absolute; inset: 0; background:
+  radial-gradient(ellipse at 15% 25%, oklch(0.72 0.03 250 / 0.40) 0%, transparent 55%),
+  radial-gradient(ellipse at 85% 75%, oklch(0.85 0.03 60 / 0.35) 0%, transparent 50%),
+  var(--background); }
+.intro-card-inner { position: absolute; left: 80px; right: 80px; top: 0; bottom: 0; display: flex; flex-direction: column;
+  justify-content: center; color: var(--foreground); padding-bottom: 160px; }
+.intro-card-inner .wm { height: 110px; }
+.intro-card-inner .wm-dot { width: 46px; height: 46px; background: var(--foreground); box-shadow: 0 0 0 12px oklch(0.16 0.03 260 / 0.08); }
+.intro-card-inner .wm-text { font-size: 112px; }
+.intro-card-inner .ic-eyebrow { margin-top: 44px; font-size: 30px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-foreground); }
+.intro-card-inner .ic-title { margin-top: 14px; font-size: 72px; line-height: 1.05; font-weight: 800; letter-spacing: -0.035em; }
+
+/* quote card: full screen, covers the video while the quote plays */
+.quote-bg { position: absolute; inset: 0; background:
+  radial-gradient(ellipse at 80% 20%, oklch(0.85 0.04 60 / 0.50) 0%, transparent 55%),
+  radial-gradient(ellipse at 20% 80%, oklch(0.72 0.03 250 / 0.40) 0%, transparent 55%),
+  var(--background); }
+.quote-inner { position: absolute; left: 84px; right: 84px; top: 0; bottom: 0; display: flex; flex-direction: column;
+  justify-content: center; color: var(--foreground); padding-bottom: 120px; }
+.q-mark { font-size: 260px; line-height: 0.6; height: 130px; font-weight: 900; color: var(--primary); letter-spacing: -0.05em; }
+.q-text { margin-top: 30px; font-size: 92px; line-height: 1.06; font-weight: 800; letter-spacing: -0.035em; }
+.q-text .em::before { background: oklch(0.42 0.16 250 / 0.16); }
+.q-text .em { color: var(--primary); }
+.q-by { margin-top: 48px; display: flex; align-items: center; gap: 20px; font-size: 34px; font-weight: 600; }
+.q-by .q-rule { width: 56px; height: 4px; border-radius: 4px; background: var(--primary); }
+.q-by .q-role { font-weight: 500; color: var(--muted-foreground); }
 
 /* persistent bug + speaker tag */
 #bug { position: absolute; left: 60px; top: 222px; height: 68px; padding: 0 26px 0 22px; border-radius: 999px;
@@ -213,8 +241,10 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     cta = plan.get("cta") or {}
     speaker = plan.get("speaker") or {}
     company = plan.get("company") or speaker.get("company") or ""
-    cta_dur = float(cta.get("duration", 3.8))
-    total = round(D + cta_dur, 3)
+    cta_dur = float(cta.get("duration", 3.0))      # end card on screen, crossfade included
+    total = round(D + cta_dur - CTA_OVERLAP, 3)
+    layout = plan.get("layout") or {}
+    callout_top = int(layout.get("callout_top", CALLOUT_TOP))
     intro_dur = float(intro.get("duration", 2.6))
 
     js: list[str] = []          # timeline statements
@@ -233,8 +263,32 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     # --- intro --------------------------------------------------------------------------
     eyebrow = intro.get("eyebrow", "Customer story")
     headline = intro.get("headline", "")
-    co_html = f'<span class="x">×</span><span class="co">{esc(company)}</span>' if company else ""
-    els.append(f'''
+    if intro.get("style", "overlay") == "card":
+        # Full-screen light gradient opener. The video (and its audio) already runs underneath,
+        # so the first words land while Community is on screen.
+        title = f'<div class="ic-title" id="ic-title">{emphasize(headline)}</div>' if headline else ""
+        els.append(f'''
+    <section id="intro" class="clip" data-start="0" data-duration="{intro_dur:.3f}" data-track-index="3">
+      <div id="intro-fade" style="position:absolute;inset:0">
+        <div class="intro-card-bg"></div>
+        <div class="intro-card-inner">
+          <div class="wm" id="ic-wm">{wordmark("dark")}</div>
+          <div class="ic-eyebrow" id="ic-eyebrow">{esc(eyebrow)}{(" · " + esc(company)) if company else ""}</div>
+          {title}
+        </div>
+      </div>
+    </section>''')
+        fade = min(0.25, intro_dur * 0.3)
+        js += [
+            'tl.fromTo("#ic-wm", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.3, ease: "power3.out"}, 0);',
+            'tl.fromTo("#ic-eyebrow", {opacity: 0}, {opacity: 1, duration: 0.25, ease: "power2.out"}, 0.12);',
+            f'tl.to("#intro-fade", {{opacity: 0, scale: 1.04, duration: {fade:.2f}, ease: "power2.in"}}, {intro_dur - fade:.3f});',
+        ]
+        if headline:
+            js.append('tl.fromTo("#ic-title .hw", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.3, stagger: 0.03, ease: "power3.out"}, 0.15);')
+    else:
+        co_html = f'<span class="x">×</span><span class="co">{esc(company)}</span>' if company else ""
+        els.append(f'''
     <section id="intro" class="clip" data-start="0" data-duration="{intro_dur:.3f}" data-track-index="3">
       <div class="intro-inner" id="intro-inner">
         <div class="pill wm" id="intro-pill">{wordmark("light")}{co_html}</div>
@@ -242,13 +296,13 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         <div class="headline" id="intro-headline">{emphasize(headline)}</div>
       </div>
     </section>''')
-    js += [
-        'tl.fromTo("#intro-pill", {y: -30, opacity: 0}, {y: 0, opacity: 1, duration: 0.45, ease: "power3.out"}, 0.05);',
-        'tl.fromTo("#intro-eyebrow", {opacity: 0}, {opacity: 0.86, duration: 0.4, ease: "power2.out"}, 0.25);',
-        'tl.fromTo("#intro-headline .hw", {y: 60, opacity: 0}, {y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: "power3.out"}, 0.3);',
-        'tl.fromTo("#intro-headline .em", {scale: 0.9}, {scale: 1, duration: 0.35, ease: "power3.out"}, 0.75);',
-        f'tl.to("#intro-inner", {{y: -40, opacity: 0, duration: 0.35, ease: "power2.in"}}, {intro_dur - 0.35:.3f});',
-    ]
+        js += [
+            'tl.fromTo("#intro-pill", {y: -30, opacity: 0}, {y: 0, opacity: 1, duration: 0.45, ease: "power3.out"}, 0.05);',
+            'tl.fromTo("#intro-eyebrow", {opacity: 0}, {opacity: 0.86, duration: 0.4, ease: "power2.out"}, 0.25);',
+            'tl.fromTo("#intro-headline .hw", {y: 60, opacity: 0}, {y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: "power3.out"}, 0.3);',
+            'tl.fromTo("#intro-headline .em", {scale: 0.9}, {scale: 1, duration: 0.35, ease: "power3.out"}, 0.75);',
+            f'tl.to("#intro-inner", {{y: -40, opacity: 0, duration: 0.35, ease: "power2.in"}}, {intro_dur - 0.35:.3f});',
+        ]
 
     # --- persistent bug -----------------------------------------------------------------
     bug_start = intro_dur - 0.1
@@ -261,13 +315,16 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
 
     # --- speaker tag --------------------------------------------------------------------
     busy: list[tuple[float, float]] = []
+    quote_windows: list[tuple[float, float]] = []
+    if intro.get("style", "overlay") == "card":
+        quote_windows.append((0.0, intro_dur))     # no captions over the light opener
     if speaker.get("name"):
         s_at = float(speaker.get("at", intro_dur + 0.2))
         s_dur = float(speaker.get("duration", 3.2))
-        role = ", ".join(x for x in [speaker.get("title"), company] if x)
+        role = ", ".join(x for x in [speaker.get("title"), speaker.get("company", company)] if x)
         els.append(f'''
     <div id="spk-clip" class="clip" data-start="{s_at:.3f}" data-duration="{s_dur:.3f}" data-track-index="5">
-      <div class="speaker" id="spk"><div class="bar"></div>
+      <div class="speaker" id="spk" style="top:{int(layout.get("speaker_top", 310))}px"><div class="bar"></div>
         <div class="name">{esc(speaker["name"])}</div>{f'<div class="role">{esc(role)}</div>' if role else ""}</div>
     </div>''')
         js += [
@@ -284,11 +341,11 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         dur = float(c.get("duration", 3.0))
         if at + dur > D:
             dur = max(1.2, D - at)
-        top = CALLOUT_TOP
-        if any(a < at + dur and at < b for a, b in busy):
-            top = CALLOUT_TOP + 190
+        top = callout_top
+        if c.get("kind") != "quote" and any(a < at + dur and at < b for a, b in busy):
+            top = callout_top + 190
             warnings.append(f"callout {n} overlaps the speaker tag; moved down")
-        if at < intro_dur:
+        if at < intro_dur and c.get("kind") != "quote":
             warnings.append(f"callout {n} at {at:.2f}s starts during the intro card")
         kind = c.get("kind", "stat")
         if kind == "stat":
@@ -324,8 +381,30 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         elif kind == "punch":
             inner = f'<div class="punch" id="{cid}-card"><div class="p-text">{emphasize(c.get("text", ""))}</div></div>'
             js.append(f'tl.fromTo("#{cid}-card .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.4, stagger: 0.07, ease: "power3.out"}}, {at:.3f});')
+        elif kind == "quote":
+            who = c.get("by") or speaker.get("name", "")
+            role = c.get("role", "")
+            by = (f'<div class="q-by" id="{cid}-by"><span class="q-rule"></span><span>{esc(who)}</span>'
+                  f'{f"<span class=q-role>{esc(role)}</span>" if role else ""}</div>') if who else ""
+            els.append(f'''
+    <section id="{cid}" class="clip" data-start="{at:.3f}" data-duration="{dur:.3f}" data-track-index="7">
+      <div id="{cid}-card" style="position:absolute;inset:0">
+        <div class="quote-bg"></div>
+        <div class="quote-inner"><div class="q-mark">&ldquo;</div>
+          <div class="q-text" id="{cid}-text">{emphasize(c.get("text", ""))}</div>{by}</div>
+      </div>
+    </section>''')
+            js += [
+                f'tl.fromTo("#{cid}-card", {{opacity: 0}}, {{opacity: 1, duration: 0.18, ease: "power2.out"}}, {at:.3f});',
+                f'tl.fromTo("#{cid}-text .hw", {{y: 40, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.35, stagger: 0.05, ease: "power3.out"}}, {at + 0.08:.3f});',
+                f'tl.to("#{cid}-card", {{opacity: 0, duration: 0.2, ease: "power2.in"}}, {at + dur - 0.2:.3f});',
+            ]
+            if who:
+                js.append(f'tl.fromTo("#{cid}-by", {{opacity: 0}}, {{opacity: 1, duration: 0.3}}, {at + 0.4:.3f});')
+            quote_windows.append((at, at + dur))
+            continue
         else:
-            raise ValueError(f"unknown callout kind '{kind}' (use stat, chip or punch)")
+            raise ValueError(f"unknown callout kind '{kind}' (use stat, chip, punch or quote)")
         js.append(f'tl.to("#{cid}-card", {{opacity: 0, y: -24, duration: 0.3, ease: "power2.in"}}, {at + dur - 0.3:.3f});')
         els.append(f'''
     <div id="{cid}" class="clip callout" style="top:{top}px" data-start="{at:.3f}" data-duration="{dur:.3f}" data-track-index="6">
@@ -336,12 +415,16 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     # --- captions -----------------------------------------------------------------------
     cap_cfg = plan.get("captions") or {}
     if cap_cfg.get("enabled", True):
-        pages = chunk_captions(owords, int(cap_cfg.get("max_words", 3)), int(cap_cfg.get("max_chars", 18)))
+        def under_quote(t: float) -> bool:
+            return any(a - 0.05 <= t < b for a, b in quote_windows)
+        kept = [w for w in owords if not under_quote(w["start"])]
+        pages = chunk_captions(kept, int(cap_cfg.get("max_words", 3)), int(cap_cfg.get("max_chars", 18)))
         cap_html = []
         for p, page in enumerate(pages):
             start = page[0]["start"]
             nxt = pages[p + 1][0]["start"] if p + 1 < len(pages) else D
             end = min(nxt, page[-1]["end"] + 0.6, D)
+            end = min([end] + [a for a, b in quote_windows if a > start])
             words_html = "".join(f'<span class="cw" id="w{p}_{k}"><span class="hl"></span>{esc(w["text"])}</span>'
                                  for k, w in enumerate(page))
             cap_html.append(f'<div class="cap" id="cap{p}">{words_html}</div>')
@@ -381,7 +464,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         f'tl.fromTo("#cta-head .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: "power3.out"}}, {D + 0.25:.3f});',
         f'tl.fromTo("#cta-btn", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, ease: "power3.out"}}, {D + 0.85:.3f});',
         f'tl.fromTo("#cta-url", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {D + 1.1:.3f});',
-        f'tl.fromTo("#cta-ring", {{opacity: 0.8, scale: 1}}, {{opacity: 0, scale: 1.25, duration: 0.9, ease: "power2.out"}}, {D + 1.5:.3f});',
+        f'tl.fromTo("#cta-ring", {{opacity: 0.8, scale: 1}}, {{opacity: 0, scale: 1.25, duration: 0.9, ease: "power2.out", immediateRender: false}}, {D + 1.5:.3f});',
     ]
     if cta.get("subline"):
         js.append(f'tl.fromTo("#cta-sub", {{opacity: 0, y: 20}}, {{opacity: 1, y: 0, duration: 0.45, ease: "power3.out"}}, {D + 0.55:.3f});')

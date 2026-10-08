@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib import compose, cut, mix  # noqa: E402
 from lib.common import FPS, H, PROJECTS, ROOT, W, probe, project_dir, resolve, run  # noqa: E402
-from lib.timeline import output_words, resolve_anchor, snap_ranges  # noqa: E402
+from lib.timeline import Envelope, output_words, resolve_anchor, snap_ranges  # noqa: E402
 
 HYPERFRAMES = "hyperframes@0.8.142"
 TARGET = (34.0, 48.0)   # final runtime window in seconds, CTA included
@@ -70,7 +70,7 @@ def cmd_transcribe(a) -> None:
     print(f"source: {video.name}  {info['width']}x{info['height']} {info['orientation']}  "
           f"{info['duration']:.1f}s  {info['fps']}fps{'  HDR' if info['hdr'] else ''}")
     words = transcribe(video, proj, info, a.speakers, a.language, a.model, a.force,
-                       Path(a.transcript).resolve() if a.transcript else None)
+                       Path(a.transcript).resolve() if a.transcript else None, a.engine)
     n = 6
     times = [info["duration"] * (i + 0.5) / n for i in range(n)]
     contact_sheet(video, proj / "source_frames.jpg", times, width=480 if info["orientation"] == "landscape" else 270)
@@ -100,7 +100,7 @@ def load(plan_path: Path):
     if not words_path.exists():
         sys.exit(f"{words_path} missing. Run: python shorts.py transcribe {source}")
     words = json.loads(words_path.read_text())
-    ranges = snap_ranges(plan["ranges"], words, info["duration"])
+    ranges = snap_ranges(plan["ranges"], words, info["duration"], Envelope(source))
     # Alternate a punch-in on consecutive cuts so jump cuts read as intentional.
     if plan.get("auto_punch", True):
         for i, r in enumerate(ranges):
@@ -111,7 +111,7 @@ def load(plan_path: Path):
 
 def describe(plan, ranges, owords) -> float:
     base = sum(r["end"] - r["start"] for r in ranges)
-    cta = float((plan.get("cta") or {}).get("duration", 3.8))
+    cta = float((plan.get("cta") or {}).get("duration", 3.0)) - compose.CTA_OVERLAP
     print(f"\n{'#':>2} {'src in':>8} {'src out':>8} {'len':>5} {'out at':>7}  beat / words")
     t = 0.0
     for i, r in enumerate(ranges):
@@ -119,7 +119,8 @@ def describe(plan, ranges, owords) -> float:
         print(f"{i:>2} {r['start']:8.2f} {r['end']:8.2f} {r['end'] - r['start']:5.1f} {t:7.2f}  "
               f"[{r.get('beat', '')}] {seg_words[:90]}{'...' if len(seg_words) > 90 else ''}")
         t += r["end"] - r["start"]
-    print(f"\nspeech {base:.1f}s + end card {cta:.1f}s = {base + cta:.1f}s total")
+    print(f"\nspeech {base:.1f}s + end card {cta + compose.CTA_OVERLAP:.1f}s "
+          f"(overlapping the last {compose.CTA_OVERLAP}s of speech) = {base + cta:.1f}s total")
     for n, c in enumerate(plan.get("callouts") or []):
         at = float(c["at"]) if "at" in c else resolve_anchor(c["anchor"], owords)
         print(f"  callout {n} {c.get('kind', 'stat'):5} at {at:5.2f}s  "
@@ -202,7 +203,7 @@ def qc(video: Path, ranges: list[dict] | None = None, plan: dict | None = None) 
         for r in ranges[:-1]:
             t += r["end"] - r["start"]
             times.append(t + 0.25)
-    cta = float(((plan or {}).get("cta") or {}).get("duration", 3.8))
+    cta = float(((plan or {}).get("cta") or {}).get("duration", 3.0))
     times += [total - cta + 0.9, total - 0.3]
     times = sorted({round(min(max(x, 0.0), total - 0.05), 2) for x in times})[:12]
     sheet = video.with_name(video.stem + "_qc.jpg")
@@ -236,6 +237,8 @@ def main() -> None:
     t.add_argument("--language", help="ISO code, e.g. en. Omit to auto-detect")
     t.add_argument("--model", default="scribe_v1")
     t.add_argument("--force", action="store_true", help="re-transcribe even if cached")
+    t.add_argument("--engine", choices=["elevenlabs", "local"], default="elevenlabs",
+                   help="local = offline Parakeet model (see lib/local_asr.py) when ElevenLabs is unreachable")
     t.add_argument("--transcript", help="import an existing ElevenLabs Scribe JSON instead of calling the API")
     t.set_defaults(fn=cmd_transcribe)
 

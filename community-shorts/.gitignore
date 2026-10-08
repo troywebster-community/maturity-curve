@@ -4,3 +4,5 @@ raw/*
 projects/*
 !projects/.gitkeep
 __pycache__/
+models/*
+!models/.gitkeep

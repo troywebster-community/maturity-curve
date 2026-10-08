@@ -5,10 +5,12 @@ Reels and YouTube Shorts (1080x1920, 30fps, -14 LUFS).
 
 Every short:
 
-- opens with a Community intro card over the customer's best line (the hook)
+- opens with a Community intro: a card floating over the hook, or a short full-screen light
+  gradient opener
 - cuts the talk down to the strongest beats: problem, how they use Community, proof, closer
 - shows word-by-word captions sized for phones and kept clear of the Reels/Shorts UI
-- adds a speaker name tag, product differentiator chips, and stat cards that count up
+- adds a speaker name tag, product differentiator chips, stat cards that count up, and
+  full-screen quote cards with the customer's own words
 - ends on a Community end card with one call to action
 - follows the Community brand system (warm white, near-black, one blue, Inter)
 
@@ -41,6 +43,7 @@ npx --yes hyperframes@0.8.142 browser ensure   # headless Chrome for rendering
 
 ```bash
 python shorts.py transcribe raw/acme.mp4 --name acme   # ElevenLabs Scribe, cached
+python shorts.py transcribe raw/acme.mp4 --name acme --engine local   # offline fallback
 python shorts.py check projects/acme/plan.json         # print cuts, kept words, runtime, callouts
 python shorts.py render projects/acme/plan.json --draft
 python shorts.py render projects/acme/plan.json        # final: projects/acme/acme.mp4
@@ -74,6 +77,8 @@ community-shorts/
 
 ## Notes
 
+- Offline transcription: when ElevenLabs can't be reached, `--engine local` runs NVIDIA's
+  Parakeet model on your machine. One-time setup (about 480 MB) is at the top of `lib/local_asr.py`.
 - The wordmark is type-only until real logo files are added to `assets/brand/`
   (`logo-light` for dark backgrounds, `logo-dark` for the end card, SVG or PNG).
 - Uxum Grotesque is not bundled; headlines use Inter Bold/Black, the brand's stated fallback.

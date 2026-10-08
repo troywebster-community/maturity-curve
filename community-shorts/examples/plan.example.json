@@ -10,7 +10,10 @@
   "auto_punch": true,
   "punch_zoom": 1.12,
 
+  "layout": { "callout_top": 360, "speaker_top": 310 },
+
   "intro": {
+    "style": "overlay",
     "eyebrow": "Customer story",
     "headline": "How Customer Co made **text** their best channel",
     "duration": 2.6
@@ -20,13 +23,14 @@
     { "start": 0.0, "end": 4.0, "beat": "HOOK" },
     { "start": 10.0, "end": 18.0, "beat": "PROBLEM" },
     { "start": 22.0, "end": 34.0, "beat": "HOW THEY USE COMMUNITY" },
-    { "start": 40.0, "end": 48.0, "beat": "PROOF / ROI" }
+    { "start": 40.0, "end": 48.0, "beat": "PROOF / ROI", "framing": { "mode": "fit" } }
   ],
 
   "callouts": [
     { "kind": "chip", "anchor": "text back", "text": "Two-way conversations", "sub": "Replies, not just reach", "duration": 2.8 },
     { "kind": "stat", "anchor": "thirty percent", "value": "30%", "label": "of online revenue from text", "kicker": "Result", "duration": 3.2 },
-    { "kind": "punch", "anchor": "fully own", "text": "A channel you **own**", "duration": 2.2 }
+    { "kind": "punch", "anchor": "fully own", "text": "A channel you **own**", "duration": 2.2 },
+    { "kind": "quote", "at": 30.0, "duration": 3.0, "text": "People actually text **back**", "by": "First Last", "role": "Customer Co" }
   ],
 
   "corrections": { "community": "Community" },
@@ -38,7 +42,7 @@
     "subline": "Two-way texting that turns replies into revenue",
     "button": "Book a demo",
     "url": "community.com",
-    "duration": 3.8
+    "duration": 3.0
   },
 
   "music": { "file": null, "volume": 0.16 }

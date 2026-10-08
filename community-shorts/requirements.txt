@@ -1,1 +1,4 @@
 requests>=2.31
+# optional, only for --engine local (offline transcription):
+# sherpa-onnx
+# soundfile

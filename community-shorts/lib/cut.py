@@ -68,7 +68,8 @@ def frame_filter(info: dict, framing: dict, zoom: float) -> tuple[str, bool]:
 
 def extract(source: Path, info: dict, r: dict, framing: dict, grade: str, out: Path, draft: bool) -> None:
     dur = r["end"] - r["start"]
-    vf, complex_ = frame_filter(info, framing, float(r.get("zoom", 1.0)))
+    fr = {**framing, **(r.get("framing") or {})}          # a range can reframe its own shot
+    vf, complex_ = frame_filter(info, fr, float(fr.get("zoom", 1.0)) * float(r.get("zoom", 1.0)))
     g = grade_filter(r.get("grade", grade))
     if g:
         vf = f"{vf},{g}"
