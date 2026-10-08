@@ -1,0 +1,45 @@
+{
+  "name": "example",
+  "source": "raw/example.mp4",
+  "brief": "Paste the natural-language brief here so the plan keeps a record of what was asked.",
+  "company": "Customer Co",
+  "speaker": { "name": "First Last", "title": "Head of Marketing" },
+
+  "framing": { "mode": "crop", "focus_x": 0.5, "focus_y": 0.4 },
+  "grade": "social_bright",
+  "auto_punch": true,
+  "punch_zoom": 1.12,
+
+  "intro": {
+    "eyebrow": "Customer story",
+    "headline": "How Customer Co made **text** their best channel",
+    "duration": 2.6
+  },
+
+  "ranges": [
+    { "start": 0.0, "end": 4.0, "beat": "HOOK" },
+    { "start": 10.0, "end": 18.0, "beat": "PROBLEM" },
+    { "start": 22.0, "end": 34.0, "beat": "HOW THEY USE COMMUNITY" },
+    { "start": 40.0, "end": 48.0, "beat": "PROOF / ROI" }
+  ],
+
+  "callouts": [
+    { "kind": "chip", "anchor": "text back", "text": "Two-way conversations", "sub": "Replies, not just reach", "duration": 2.8 },
+    { "kind": "stat", "anchor": "thirty percent", "value": "30%", "label": "of online revenue from text", "kicker": "Result", "duration": 3.2 },
+    { "kind": "punch", "anchor": "fully own", "text": "A channel you **own**", "duration": 2.2 }
+  ],
+
+  "corrections": { "community": "Community" },
+  "captions": { "enabled": true, "max_words": 3, "max_chars": 18 },
+
+  "cta": {
+    "eyebrow": "Text-first marketing",
+    "headline": "Start the conversation with your **fans**",
+    "subline": "Two-way texting that turns replies into revenue",
+    "button": "Book a demo",
+    "url": "community.com",
+    "duration": 3.8
+  },
+
+  "music": { "file": null, "volume": 0.16 }
+}

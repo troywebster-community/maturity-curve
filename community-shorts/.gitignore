@@ -1,0 +1,6 @@
+.env
+raw/*
+!raw/.gitkeep
+projects/*
+!projects/.gitkeep
+__pycache__/
