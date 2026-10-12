@@ -79,8 +79,9 @@ community-shorts/
 
 - Offline transcription: when ElevenLabs can't be reached, `--engine local` runs NVIDIA's
   Parakeet model on your machine. One-time setup (about 480 MB) is at the top of `lib/local_asr.py`.
-- The wordmark is type-only until real logo files are added to `assets/brand/`
-  (`logo-light` for dark backgrounds, `logo-dark` for the end card, SVG or PNG).
+- The opener and end card use the Community logo and gradient background in `assets/brand/`.
+  The small corner bug over video still uses a type-only wordmark until a `logo-light` file
+  (white logo for dark backgrounds) is added there.
 - Uxum Grotesque is not bundled; headlines use Inter Bold/Black, the brand's stated fallback.
 - No music is bundled. Add `"music": {"file": "path/to/track.mp3"}` to a plan to use a licensed track.
 - A full-quality render of a 40s short takes a few minutes on a laptop.

@@ -58,6 +58,15 @@ def parse_number(value: str):
     return m.group(1), float(num), m.group(3), decimals, "," in m.group(2)
 
 
+def brand_background() -> str:
+    """A provided brand background image for the opener and end card, if one is in assets/brand."""
+    for ext in ("webp", "jpg", "png"):
+        f = ASSETS / "brand" / f"background.{ext}"
+        if f.exists():
+            return (f'<img class="brand-bg" src="assets/brand/{f.name}" alt="" />')
+    return ""
+
+
 def wordmark(variant: str) -> str:
     """Use a real logo file if one is dropped in assets/brand, else a type-only wordmark."""
     for ext in ("svg", "png"):
@@ -101,6 +110,7 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
   box-shadow: 0 0 0 6px oklch(0.985 0.002 80 / 0.18); }
 .wm-text { font-weight: 800; letter-spacing: -0.035em; }
 .logo-img { height: 100%; width: auto; display: block; }
+.brand-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
 
 /* intro */
 #intro { position: absolute; inset: 0; }
@@ -204,6 +214,7 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .b2 { width: 980px; height: 980px; right: -320px; bottom: 140px; background: radial-gradient(circle, oklch(0.85 0.04 60 / 0.42) 0%, transparent 62%); }
 .cta-inner { position: absolute; left: 80px; right: 80px; top: 540px; color: var(--foreground); }
 .cta-inner .wm { height: 96px; }
+.cta-inner .wm .logo-img, .intro-card-inner .wm .logo-img { height: 88px; }
 .cta-inner .wm-dot { width: 40px; height: 40px; background: var(--foreground); box-shadow: 0 0 0 10px oklch(0.16 0.03 260 / 0.08); }
 .cta-inner .wm-text { font-size: 92px; }
 .cta-eyebrow { margin-top: 84px; font-size: 26px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-foreground); }
@@ -270,7 +281,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         els.append(f'''
     <section id="intro" class="clip" data-start="0" data-duration="{intro_dur:.3f}" data-track-index="3">
       <div id="intro-fade" style="position:absolute;inset:0">
-        <div class="intro-card-bg"></div>
+        <div class="intro-card-bg">{brand_background()}</div>
         <div class="intro-card-inner">
           <div class="wm" id="ic-wm">{wordmark("dark")}</div>
           <div class="ic-eyebrow" id="ic-eyebrow">{esc(eyebrow)}{(" · " + esc(company)) if company else ""}</div>
@@ -341,8 +352,8 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         dur = float(c.get("duration", 3.0))
         if at + dur > D:
             dur = max(1.2, D - at)
-        top = callout_top
-        if c.get("kind") != "quote" and any(a < at + dur and at < b for a, b in busy):
+        top = int(c.get("top", callout_top))
+        if "top" not in c and c.get("kind") != "quote" and any(a < at + dur and at < b for a, b in busy):
             top = callout_top + 190
             warnings.append(f"callout {n} overlaps the speaker tag; moved down")
         if at < intro_dur and c.get("kind") != "quote":
@@ -444,7 +455,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     btn = cta.get("button", "Book a demo")
     els.append(f'''
     <section id="cta" class="clip" data-start="{c_start:.3f}" data-duration="{c_dur:.3f}" data-track-index="10">
-      <div class="cta-bg" id="cta-bg"><div class="beacon b1" id="b1"></div><div class="beacon b2" id="b2"></div></div>
+      <div class="cta-bg" id="cta-bg">{brand_background() or '<div class="beacon b1" id="b1"></div><div class="beacon b2" id="b2"></div>'}</div>
       <div class="cta-inner">
         <div class="wm" id="cta-wm">{wordmark("dark")}</div>
         <div class="cta-eyebrow" id="cta-eyebrow">{esc(cta.get("eyebrow", "Text-first marketing"))}</div>
@@ -457,8 +468,6 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     </section>''')
     js += [
         f'tl.fromTo("#cta-bg", {{opacity: 0}}, {{opacity: 1, duration: {CTA_OVERLAP:.2f}, ease: "power2.inOut"}}, {c_start:.3f});',
-        f'tl.fromTo("#b1", {{x: 0, y: 0, scale: 1}}, {{x: 40, y: -30, scale: 1.06, duration: {c_dur:.3f}, ease: "sine.inOut"}}, {c_start:.3f});',
-        f'tl.fromTo("#b2", {{x: 0, y: 0, scale: 1}}, {{x: -30, y: 20, scale: 0.97, duration: {c_dur:.3f}, ease: "sine.inOut"}}, {c_start:.3f});',
         f'tl.fromTo("#cta-wm", {{y: 40, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.5, ease: "power3.out"}}, {D - 0.1:.3f});',
         f'tl.fromTo("#cta-eyebrow", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {D + 0.2:.3f});',
         f'tl.fromTo("#cta-head .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: "power3.out"}}, {D + 0.25:.3f});',
@@ -466,6 +475,11 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         f'tl.fromTo("#cta-url", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {D + 1.1:.3f});',
         f'tl.fromTo("#cta-ring", {{opacity: 0.8, scale: 1}}, {{opacity: 0, scale: 1.25, duration: 0.9, ease: "power2.out", immediateRender: false}}, {D + 1.5:.3f});',
     ]
+    if not brand_background():
+        js += [
+            f'tl.fromTo("#b1", {{x: 0, y: 0, scale: 1}}, {{x: 40, y: -30, scale: 1.06, duration: {c_dur:.3f}, ease: "sine.inOut"}}, {c_start:.3f});',
+            f'tl.fromTo("#b2", {{x: 0, y: 0, scale: 1}}, {{x: -30, y: 20, scale: 0.97, duration: {c_dur:.3f}, ease: "sine.inOut"}}, {c_start:.3f});',
+        ]
     if cta.get("subline"):
         js.append(f'tl.fromTo("#cta-sub", {{opacity: 0, y: 20}}, {{opacity: 1, y: 0, duration: 0.45, ease: "power3.out"}}, {D + 0.55:.3f});')
 

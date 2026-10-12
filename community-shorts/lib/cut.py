@@ -40,6 +40,12 @@ def frame_filter(info: dict, framing: dict, zoom: float) -> tuple[str, bool]:
     Fit keeps the whole shot and puts it over a blurred copy of itself."""
     sw, sh = info["width"], info["height"]
     pre = TONEMAP + "," if info.get("hdr") else ""
+    if framing.get("box"):
+        # Use only part of the frame, e.g. the video inside a YouTube page screen capture.
+        x0, y0, x1, y1 = (float(v) for v in framing["box"])
+        cw, ch = _even((x1 - x0) * sw), _even((y1 - y0) * sh)
+        pre += f"crop={cw}:{ch}:{int(x0 * sw)}:{int(y0 * sh)},"
+        sw, sh = cw, ch
     mode = framing.get("mode", "crop")
     fx = float(framing.get("focus_x", 0.5))
     fy = float(framing.get("focus_y", 0.4))
@@ -75,11 +81,18 @@ def extract(source: Path, info: dict, r: dict, framing: dict, grade: str, out: P
         vf = f"{vf},{g}"
     vf = f"{vf},fps={FPS},format=yuv420p"
     af = f"afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0, dur - 0.03):.3f}:d=0.03"
-    cmd = ["ffmpeg", "-y", "-ss", f"{r['start']:.3f}", "-i", str(source), "-t", f"{dur:.3f}"]
+    # video_from: keep this range's audio but show picture from another moment (b-roll).
+    v_at = float(r.get("video_from", r["start"]))
+    cmd = ["ffmpeg", "-y", "-ss", f"{v_at:.3f}", "-t", f"{dur:.3f}", "-i", str(source)]
+    audio_in = "0"
+    if "video_from" in r:
+        cmd += ["-ss", f"{r['start']:.3f}", "-t", f"{dur:.3f}", "-i", str(source)]
+        audio_in = "1"
     if complex_:
-        cmd += ["-filter_complex", vf + "[v]", "-map", "[v]", "-map", "0:a:0?"]
+        cmd += ["-filter_complex", vf + "[v]", "-map", "[v]", "-map", f"{audio_in}:a:0?"]
     else:
-        cmd += ["-vf", vf, "-map", "0:v:0", "-map", "0:a:0?"]
+        cmd += ["-vf", vf, "-map", "0:v:0", "-map", f"{audio_in}:a:0?"]
+    cmd += ["-t", f"{dur:.3f}"]
     cmd += [
         "-af", af,
         "-c:v", "libx264", "-preset", "ultrafast" if draft else "fast", "-crf", "26" if draft else "18",

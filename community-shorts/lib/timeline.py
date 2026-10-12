@@ -31,6 +31,7 @@ def snap_ranges(ranges: list[dict], words: list[dict], source_duration: float,
         a, b = float(r["start"]), float(r["end"])
         if b <= a:
             raise ValueError(f"range end before start: {r}")
+        given_a, given_b = a, b
         starts = [w for w in words if abs(w["start"] - a) <= SNAP_WINDOW]
         inside = [w for w in words if a - 0.15 <= w["start"] < b - 0.05]
         prev_end, next_start = 0.0, source_duration
@@ -59,6 +60,12 @@ def snap_ranges(ranges: list[dict], words: list[dict], source_duration: float,
                 a = min(w["end"], first_s) if first_s is not None and w["start"] < first_s else w["start"] - 0.02
             if w["start"] < b < w["end"]:
                 b = max(w["start"] - 0.01, a + 0.1) if last_s is not None and w["start"] > last_s else w["end"] + 0.02
+        # "snap_start"/"snap_end": false keeps a hand-picked edge exactly (useful when music
+        # under the voice hides the silence, or the transcript's end times run short).
+        if r.get("snap_start") is False:
+            a = given_a
+        if r.get("snap_end") is False:
+            b = given_b
         if b - a < 0.15:
             raise ValueError(f"range {r['start']}-{r['end']} holds no complete word after snapping")
         out.append({**r, "start": round(max(0.0, a), 3), "end": round(min(b, source_duration), 3)})

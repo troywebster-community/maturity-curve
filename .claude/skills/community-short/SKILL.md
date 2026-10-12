@@ -61,6 +61,8 @@ All commands run from `community-shorts/`.
      frame over a blurred copy). Burned-in subtitles at the bottom of a landscape source: use
      `"focus_y": 0.0, "zoom": 1.2` so the crop drops the bottom ~17% of the frame.
      Any range can override it with its own `"framing": {...}` (different shot, different spot).
+     `"box": [x0, y0, x1, y1]` (fractions of the frame) uses only part of the picture, e.g. the
+     video inside a YouTube page screen capture; pair it with `"mode": "fit"` and `"fit_y"`.
    - `layout`: `{"callout_top": 1350, "speaker_top": 1350}` moves chips and the name tag below
      the captions when a tight close-up puts the face in the top half. Defaults are 360 / 310.
    - `grade`: `social_bright` (default), `neutral_punch`, `warm_soft`, `subtle`, `none`, or a raw
@@ -69,16 +71,27 @@ All commands run from `community-shorts/`.
      the result in their words, wrap the key word in `**...**` for the blue marker), `duration`.
      `"style": "overlay"` (default) floats it over the hook; `"style": "card"` is a full-screen
      light gradient opener (good at 1.0s, headline optional) with the hook audio running under it.
-   - `ranges`: `[{"start", "end", "beat"}]`. Optional per range: `"zoom": 1.15`.
+   - `ranges`: `[{"start", "end", "beat"}]`. Optional per range: `"zoom": 1.15`;
+     `"video_from": <source seconds>` keeps this range's audio but shows the picture from another
+     moment (b-roll). Use it whenever the source shows graphics, text cards or someone else while
+     the customer talks: the viewer should see the customer, not a full-screen text card. Prefer
+     b-roll where they are not talking to camera (walking, texting, wide shots), so lip sync
+     does not give it away. `"snap_end": false` / `"snap_start": false` keeps a hand-picked edge
+     exactly; use it when music under the voice hides the silence or a word gets clipped.
      `auto_punch` alternates a 1.12 punch-in on every other cut so jump cuts feel intentional.
    - `callouts`: timed to a phrase the speaker says with `"anchor"` (must survive the cut), or
      `"at"` seconds on the output timeline. Kinds:
      - `stat`: `value` ("30%", "$1.2M", "4x", "40 min"; numbers count up), `label`, `kicker`.
      - `chip`: product differentiator, `text` + optional `sub`. Pick from `brand/messaging.md`.
      - `punch`: one big statement, `text` with `**emphasis**`. Use at most once.
+     Any callout takes `"top": <px>` to place it on its own (e.g. stat cards in the blurred band
+     above a fit-mode b-roll shot).
+     Chips should say what the line means for the customer (the impact), not repeat the words
+     the captions already show. Example: he says "a couple hundred thousand people versus 20
+     million social followers" -> "Launches with real reach behind them".
      - `quote`: full-screen light card with the customer's exact words while that audio plays,
        plus `by` (defaults to the speaker) and optional `role`. It covers the video, so use it
-       where the source shows graphics or b-roll, and to make "quotes" the star. Captions hide
+       sparingly: it hides the customer. Prefer `video_from` b-roll plus a stat or chip. Captions hide
        under it. Time it with `at` + `duration` matching the ranges it covers (`check` prints
        each range's output time). Quote words must match what is said; mark cuts with "…".
      Space callouts at least ~1s apart, 2.5-3.2s each, none during the intro card.
