@@ -79,13 +79,18 @@ def extract(source: Path, info: dict, r: dict, framing: dict, grade: str, out: P
     g = grade_filter(r.get("grade", grade))
     if g:
         vf = f"{vf},{g}"
+    # hold_from: freeze the picture from this source time on (the shot ends before the words do).
+    v_len = dur
+    if "hold_from" in r:
+        v_len = max(0.1, min(dur, float(r["hold_from"]) - float(r.get("video_from", r["start"]))))
+        vf = f"{vf},tpad=stop_mode=clone:stop_duration={dur - v_len + 0.1:.3f}"
     vf = f"{vf},fps={FPS},format=yuv420p"
     af = f"afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0, dur - 0.03):.3f}:d=0.03"
     # video_from: keep this range's audio but show picture from another moment (b-roll).
     v_at = float(r.get("video_from", r["start"]))
-    cmd = ["ffmpeg", "-y", "-ss", f"{v_at:.3f}", "-t", f"{dur:.3f}", "-i", str(source)]
+    cmd = ["ffmpeg", "-y", "-ss", f"{v_at:.3f}", "-t", f"{v_len:.3f}", "-i", str(source)]
     audio_in = "0"
-    if "video_from" in r:
+    if "video_from" in r or "hold_from" in r:
         cmd += ["-ss", f"{r['start']:.3f}", "-t", f"{dur:.3f}", "-i", str(source)]
         audio_in = "1"
     if complex_:

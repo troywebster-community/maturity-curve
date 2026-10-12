@@ -78,6 +78,9 @@ All commands run from `community-shorts/`.
      b-roll where they are not talking to camera (walking, texting, wide shots), so lip sync
      does not give it away. `"snap_end": false` / `"snap_start": false` keeps a hand-picked edge
      exactly; use it when music under the voice hides the silence or a word gets clipped.
+     `"hold_from": <source seconds>` freezes the picture from that point, for when the shot
+     cuts away (to a graphic) a moment before the speaker finishes the word.
+   - `target_s`: `[low, high]` runtime window when the brief asks for a length other than ~40s.
      `auto_punch` alternates a 1.12 punch-in on every other cut so jump cuts feel intentional.
    - `callouts`: timed to a phrase the speaker says with `"anchor"` (must survive the cut), or
      `"at"` seconds on the output timeline. Kinds:

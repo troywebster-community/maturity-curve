@@ -126,8 +126,9 @@ def describe(plan, ranges, owords) -> float:
         print(f"  callout {n} {c.get('kind', 'stat'):5} at {at:5.2f}s  "
               f"{c.get('value', '')} {c.get('label', '') or c.get('text', '')}")
     total = base + cta
-    if not TARGET[0] <= total <= TARGET[1]:
-        print(f"  ! total {total:.1f}s is outside the {TARGET[0]:.0f}-{TARGET[1]:.0f}s target")
+    lo, hi = plan.get("target_s") or TARGET      # a brief can ask for a different length
+    if not lo <= total <= hi:
+        print(f"  ! total {total:.1f}s is outside the {lo:.0f}-{hi:.0f}s target")
     return total
 
 
