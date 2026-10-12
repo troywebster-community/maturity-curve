@@ -164,6 +164,8 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
   backdrop-filter: blur(16px); font-size: 28px; }
 #bug .wm-dot { width: 18px; height: 18px; box-shadow: 0 0 0 4px oklch(0.985 0.002 80 / 0.18); }
 #bug .wm-text { font-size: 36px; }
+#bug .logo-img { height: 32px; }
+.pill .logo-img { height: 40px; }
 .speaker { position: absolute; left: 60px; top: 310px; padding: 22px 30px; border-radius: 22px; max-width: 760px;
   background: oklch(0.99 0.002 80 / 0.88); color: var(--foreground);
   box-shadow: 0 16px 40px oklch(0.45 0.12 245 / 0.22); }
