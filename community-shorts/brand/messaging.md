@@ -67,3 +67,9 @@ Flows, Keywords, Campaign Surveys, Growth Tools and Insights are the other offic
 | Data angle | Know who wants to **hear from you** | Book a demo |
 
 URL line is always `community.com`.
+
+## Lines to leave out
+
+- Anything that dates the relationship wrong. Long-time customers (Gary Vee, for one) must not
+  say "new", "just joined", "huge announcement", "for the last few months" or similar. Old
+  footage often has these; cut them even when the line is otherwise strong.
