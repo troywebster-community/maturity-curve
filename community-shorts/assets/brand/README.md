@@ -8,3 +8,4 @@ Brand assets used by every short:
 - flag-dark.png / wordmark-dark.png (and -light): the logo cut at the gap between the flag
   and the word. The end card uses them to make the flag wave. Recut them from a new logo with
   the same split if the logo changes.
+- flag-mark-dark.png: the flag on its own, used large and waving on the default end card.

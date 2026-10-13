@@ -11,7 +11,7 @@ Every short:
 - shows word-by-word captions sized for phones and kept clear of the Reels/Shorts UI
 - adds a speaker name tag, product differentiator chips, stat cards that count up, and
   full-screen quote cards with the customer's own words
-- ends on a Community end card with one call to action
+- ends on the Community flag waving over the brand background with "Learn more at Community.com"
 - follows the Community brand system (warm white, near-black, one blue, Inter)
 
 ## How you use it

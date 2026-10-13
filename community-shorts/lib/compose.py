@@ -68,6 +68,7 @@ def brand_background() -> str:
 
 
 FLAG_STRIPS = 28
+FLAG_ONLY_STRIPS = 72
 
 
 def waving_logo(variant: str, height: int, prefix: str) -> tuple[str, str] | None:
@@ -98,12 +99,28 @@ def waving_logo(variant: str, height: int, prefix: str) -> tuple[str, str] | Non
     return html, prefix
 
 
-def wave_js(prefix: str, start: float, dur: float, amp: float) -> str:
+def flag_only(height: int, prefix: str) -> str | None:
+    """Just the flag mark (assets/brand/flag-mark-dark.png), sliced into strips for waving."""
+    from PIL import Image
+    flag = ASSETS / "brand" / "flag-mark-dark.png"
+    if not flag.exists():
+        return None
+    fw, fh = Image.open(flag).size
+    f_w = round(fw * height / fh)
+    sw = f_w / FLAG_ONLY_STRIPS
+    strips = "".join(
+        f'<div class="fs" id="{prefix}-fs{i}" style="left:{i * sw:.2f}px;width:{sw + 1.2:.2f}px;height:{height}px">'
+        f'<img src="assets/brand/{flag.name}" style="left:{-i * sw:.2f}px;width:{f_w}px;height:{height}px" alt="" /></div>'
+        for i in range(FLAG_ONLY_STRIPS))
+    return f'<div class="wave-logo"><div class="flag" style="width:{f_w}px;height:{height}px">{strips}</div></div>'
+
+
+def wave_js(prefix: str, start: float, dur: float, amp: float, n: int = FLAG_STRIPS) -> str:
     """Flag wave: the pole side stays put, a travelling sine grows toward the free edge,
     with soft light and shadow so the cloth reads as folding."""
     cycles = max(1, round(dur * 1.3))
     return (
-        f'(function(){{const n={FLAG_STRIPS};const s=[];for(let i=0;i<n;i++)s.push(document.getElementById("{prefix}-fs"+i));'
+        f'(function(){{const n={n};const s=[];for(let i=0;i<n;i++)s.push(document.getElementById("{prefix}-fs"+i));'
         f'const o={{p:0}};const draw=()=>{{for(let i=0;i<n;i++){{const t=i/(n-1);const a=o.p-t*Math.PI*2.2;'
         f'const k=0.15+0.85*t;s[i].style.transform="translateY("+(Math.sin(a)*{amp}*k).toFixed(2)+"px) scaleY("+(1-0.035*k*Math.cos(a)).toFixed(4)+")";'
         f's[i].style.filter="brightness("+(1+0.35*k*Math.cos(a)).toFixed(3)+")";}}}};'
@@ -266,6 +283,10 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .wave-logo .fs { position: absolute; top: 0; overflow: hidden; transform-origin: 50% 50%; }
 .wave-logo .fs img { position: absolute; top: 0; max-width: none; }
 .wave-logo .wl-word { display: block; flex: none; }
+.cta-flag-inner { position: absolute; left: 60px; right: 60px; top: 0; bottom: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding-bottom: 260px; color: oklch(0.13 0 0); }
+.cta-flag-line { margin-top: 96px; font-size: 64px; line-height: 1.1; font-weight: 700; letter-spacing: -0.025em;
+  text-align: center; color: oklch(0.13 0 0); }
 .cta-inner .wm .logo-img { height: 120px; }
 .intro-card-inner .wm .logo-img { height: 108px; }
 .cta-inner .wm-dot { width: 40px; height: 40px; background: var(--foreground); box-shadow: 0 0 0 10px oklch(0.16 0.03 260 / 0.08); }
@@ -508,35 +529,54 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     cta_logo_html = wave[0] if wave else wordmark("dark")
     c_dur = round(total - c_start, 3)
     btn = cta.get("button", "Book a demo")
-    els.append(f'''
+    if cta.get("style", "flag") == "flag" and flag_only(10, "x"):
+        # Brand background, the Community flag waving, one line of black text.
+        line = cta.get("line", "Learn more at Community.com")
+        els.append(f'''
     <section id="cta" class="clip" data-start="{c_start:.3f}" data-duration="{c_dur:.3f}" data-track-index="10">
-      <div class="cta-bg" id="cta-bg">{brand_background() or '<div class="beacon b1" id="b1"></div><div class="beacon b2" id="b2"></div>'}</div>
-      <div class="cta-inner">
-        <div class="wm" id="cta-wm" style="height:auto">{cta_logo_html}</div>
-        <div class="cta-eyebrow" id="cta-eyebrow">{esc(cta.get("eyebrow", "Text-first marketing"))}</div>
-        <div class="cta-head" id="cta-head">{emphasize(cta.get("headline", "Own the line to your audience"))}</div>
-        {f'<div class="cta-sub" id="cta-sub">{esc(cta["subline"])}</div>' if cta.get("subline") else ""}
-        <div class="cta-btn-wrap"><div class="cta-ring" id="cta-ring"></div>
-          <div class="cta-btn" id="cta-btn">{esc(btn)}{ARROW_SVG}</div></div>
-        <div class="cta-url" id="cta-url">{esc(cta.get("url", "community.com"))}</div>
+      <div class="cta-bg" id="cta-bg">{brand_background() or ""}</div>
+      <div class="cta-flag-inner">
+        <div id="cta-flag">{flag_only(int(cta.get("flag_height", 440)), "ctaf")}</div>
+        <div class="cta-flag-line" id="cta-line">{esc(line)}</div>
       </div>
     </section>''')
-    js += [
-        f'tl.fromTo("#cta-bg", {{opacity: 0}}, {{opacity: 1, duration: {CTA_OVERLAP:.2f}, ease: "power2.inOut"}}, {c_start:.3f});',
-        f'tl.fromTo("#cta-wm", {{y: 40, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.5, ease: "power3.out"}}, {D - 0.1:.3f});',
-        *( [wave_js("cta", c_start, c_dur, float(cta.get("wave_amp", 9)))] if wave else [] ),
-        f'tl.fromTo("#cta-eyebrow", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {D + 0.2:.3f});',
-        f'tl.fromTo("#cta-head .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: "power3.out"}}, {D + 0.25:.3f});',
-        f'tl.fromTo("#cta-btn", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, ease: "power3.out"}}, {D + 0.85:.3f});',
-        f'tl.fromTo("#cta-url", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {D + 1.1:.3f});',
-        f'tl.fromTo("#cta-ring", {{opacity: 0.8, scale: 1}}, {{opacity: 0, scale: 1.25, duration: 0.9, ease: "power2.out", immediateRender: false}}, {D + 1.5:.3f});',
-    ]
-    if not brand_background():
+        js += [
+            f'tl.fromTo("#cta-bg", {{opacity: 0}}, {{opacity: 1, duration: {CTA_OVERLAP:.2f}, ease: "power2.inOut"}}, {c_start:.3f});',
+            f'tl.fromTo("#cta-flag", {{y: 40, opacity: 0, scale: 0.92}}, {{y: 0, opacity: 1, scale: 1, duration: 0.55, ease: "power3.out"}}, {D - 0.15:.3f});',
+            f'tl.fromTo("#cta-line", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, ease: "power3.out"}}, {D + 0.3:.3f});',
+            wave_js("ctaf", c_start, c_dur, float(cta.get("wave_amp", 22)), FLAG_ONLY_STRIPS),
+        ]
+    else:
+        els.append(f'''
+        <section id="cta" class="clip" data-start="{c_start:.3f}" data-duration="{c_dur:.3f}" data-track-index="10">
+          <div class="cta-bg" id="cta-bg">{brand_background() or '<div class="beacon b1" id="b1"></div><div class="beacon b2" id="b2"></div>'}</div>
+          <div class="cta-inner">
+            <div class="wm" id="cta-wm" style="height:auto">{cta_logo_html}</div>
+            <div class="cta-eyebrow" id="cta-eyebrow">{esc(cta.get("eyebrow", "Text-first marketing"))}</div>
+            <div class="cta-head" id="cta-head">{emphasize(cta.get("headline", "Own the line to your audience"))}</div>
+            {f'<div class="cta-sub" id="cta-sub">{esc(cta["subline"])}</div>' if cta.get("subline") else ""}
+            <div class="cta-btn-wrap"><div class="cta-ring" id="cta-ring"></div>
+              <div class="cta-btn" id="cta-btn">{esc(btn)}{ARROW_SVG}</div></div>
+            <div class="cta-url" id="cta-url">{esc(cta.get("url", "community.com"))}</div>
+          </div>
+        </section>''')
+        js += [
+            f'tl.fromTo("#cta-bg", {{opacity: 0}}, {{opacity: 1, duration: {CTA_OVERLAP:.2f}, ease: "power2.inOut"}}, {c_start:.3f});',
+            f'tl.fromTo("#cta-wm", {{y: 40, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.5, ease: "power3.out"}}, {D - 0.1:.3f});',
+            *( [wave_js("cta", c_start, c_dur, float(cta.get("wave_amp", 9)))] if wave else [] ),
+            f'tl.fromTo("#cta-eyebrow", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {D + 0.2:.3f});',
+            f'tl.fromTo("#cta-head .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: "power3.out"}}, {D + 0.25:.3f});',
+            f'tl.fromTo("#cta-btn", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, ease: "power3.out"}}, {D + 0.85:.3f});',
+            f'tl.fromTo("#cta-url", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {D + 1.1:.3f});',
+            f'tl.fromTo("#cta-ring", {{opacity: 0.8, scale: 1}}, {{opacity: 0, scale: 1.25, duration: 0.9, ease: "power2.out", immediateRender: false}}, {D + 1.5:.3f});',
+        ]
+    flag_style = cta.get("style", "flag") == "flag" and flag_only(10, "x")
+    if not brand_background() and not flag_style:
         js += [
             f'tl.fromTo("#b1", {{x: 0, y: 0, scale: 1}}, {{x: 40, y: -30, scale: 1.06, duration: {c_dur:.3f}, ease: "sine.inOut"}}, {c_start:.3f});',
             f'tl.fromTo("#b2", {{x: 0, y: 0, scale: 1}}, {{x: -30, y: 20, scale: 0.97, duration: {c_dur:.3f}, ease: "sine.inOut"}}, {c_start:.3f});',
         ]
-    if cta.get("subline"):
+    if cta.get("subline") and not flag_style:
         js.append(f'tl.fromTo("#cta-sub", {{opacity: 0, y: 20}}, {{opacity: 1, y: 0, duration: 0.45, ease: "power3.out"}}, {D + 0.55:.3f});')
 
     page = f'''<!doctype html>

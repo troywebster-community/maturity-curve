@@ -100,9 +100,11 @@ All commands run from `community-shorts/`.
      Space callouts at least ~1s apart, 2.5-3.2s each, none during the intro card.
    - `corrections`: fix ASR spellings in captions, e.g. `{"community": "Community"}`. Keep that
      one unless the speaker uses "community" as a plain noun.
-   - `cta`: `eyebrow`, `headline`, `subline`, `button`, `url`, `logo_height` (default 124px;
-     the flag waves), `wave_amp` (default 9px), `duration` (total seconds the end
-     card is on screen, crossfade included; default 3.0). Options in `brand/messaging.md`.
+   - `cta`: the end card. Default `"style": "flag"`: the brand background, the Community flag
+     waving, and one line of black text, `"line"` (default "Learn more at Community.com").
+     Optional `flag_height` (440), `wave_amp` (22), `duration` (total seconds on screen,
+     crossfade included; default 3.0). `"style": "card"` brings back the older card with
+     `eyebrow`, `headline`, `subline`, `button`, `url`; options in `brand/messaging.md`.
    - `music`: `{"file": "path.mp3", "volume": 0.16}` if the user supplies a track (ducked
      under speech automatically). Leave `null` otherwise. Never use music you were not given.
 
