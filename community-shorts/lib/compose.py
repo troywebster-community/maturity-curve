@@ -67,6 +67,51 @@ def brand_background() -> str:
     return ""
 
 
+FLAG_STRIPS = 28
+
+
+def waving_logo(variant: str, height: int, prefix: str) -> tuple[str, str] | None:
+    """Logo with the flag mark split into vertical strips so it can wave.
+
+    Needs assets/brand/flag-<variant>.png and wordmark-<variant>.png (the logo cut at the gap
+    between the flag and the word). Returns (html, js) where js drives the wave from a phase
+    proxy on the shared timeline, or None when the pieces are missing.
+    """
+    from PIL import Image
+    flag = ASSETS / "brand" / f"flag-{variant}.png"
+    word = ASSETS / "brand" / f"wordmark-{variant}.png"
+    if not (flag.exists() and word.exists()):
+        return None
+    fw, fh = Image.open(flag).size
+    ww, wh = Image.open(word).size
+    f_w = round(fw * height / fh)
+    w_w = round(ww * height / wh)
+    gap = round(height * 0.22)
+    sw = f_w / FLAG_STRIPS
+    strips = "".join(
+        f'<div class="fs" id="{prefix}-fs{i}" style="left:{i * sw:.2f}px;width:{sw + 1.2:.2f}px;height:{height}px">'
+        f'<img src="assets/brand/{flag.name}" style="left:{-i * sw:.2f}px;width:{f_w}px;height:{height}px" alt="" /></div>'
+        for i in range(FLAG_STRIPS))
+    html = (f'<div class="wave-logo" style="height:{height}px">'
+            f'<div class="flag" style="width:{f_w}px;height:{height}px">{strips}</div>'
+            f'<img class="wl-word" src="assets/brand/{word.name}" style="height:{height}px;width:{w_w}px;margin-left:{gap}px" alt="Community" /></div>')
+    return html, prefix
+
+
+def wave_js(prefix: str, start: float, dur: float, amp: float) -> str:
+    """Flag wave: the pole side stays put, a travelling sine grows toward the free edge,
+    with soft light and shadow so the cloth reads as folding."""
+    cycles = max(1, round(dur * 1.3))
+    return (
+        f'(function(){{const n={FLAG_STRIPS};const s=[];for(let i=0;i<n;i++)s.push(document.getElementById("{prefix}-fs"+i));'
+        f'const o={{p:0}};const draw=()=>{{for(let i=0;i<n;i++){{const t=i/(n-1);const a=o.p-t*Math.PI*2.2;'
+        f'const k=0.15+0.85*t;s[i].style.transform="translateY("+(Math.sin(a)*{amp}*k).toFixed(2)+"px) scaleY("+(1-0.035*k*Math.cos(a)).toFixed(4)+")";'
+        f's[i].style.filter="brightness("+(1+0.35*k*Math.cos(a)).toFixed(3)+")";}}}};'
+        f'tl.fromTo(o,{{p:0}},{{p:{cycles * 6.2832:.4f},duration:{dur:.3f},ease:"none",immediateRender:false,onUpdate:draw}},{start:.3f});'
+        f'draw();}})();'
+    )
+
+
 def wordmark(variant: str) -> str:
     """Use a real logo file if one is dropped in assets/brand, else a type-only wordmark."""
     for ext in ("svg", "png"):
@@ -216,7 +261,13 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .b2 { width: 980px; height: 980px; right: -320px; bottom: 140px; background: radial-gradient(circle, oklch(0.85 0.04 60 / 0.42) 0%, transparent 62%); }
 .cta-inner { position: absolute; left: 80px; right: 80px; top: 540px; color: var(--foreground); }
 .cta-inner .wm { height: 96px; }
-.cta-inner .wm .logo-img, .intro-card-inner .wm .logo-img { height: 88px; }
+.wave-logo { display: flex; align-items: center; }
+.wave-logo .flag { position: relative; flex: none; }
+.wave-logo .fs { position: absolute; top: 0; overflow: hidden; transform-origin: 50% 50%; }
+.wave-logo .fs img { position: absolute; top: 0; max-width: none; }
+.wave-logo .wl-word { display: block; flex: none; }
+.cta-inner .wm .logo-img { height: 120px; }
+.intro-card-inner .wm .logo-img { height: 108px; }
 .cta-inner .wm-dot { width: 40px; height: 40px; background: var(--foreground); box-shadow: 0 0 0 10px oklch(0.16 0.03 260 / 0.08); }
 .cta-inner .wm-text { font-size: 92px; }
 .cta-eyebrow { margin-top: 84px; font-size: 26px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-foreground); }
@@ -453,13 +504,15 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
 
     # --- CTA end card -------------------------------------------------------------------
     c_start = max(0.0, D - CTA_OVERLAP)
+    wave = waving_logo("dark", int(cta.get("logo_height", 124)), "cta")
+    cta_logo_html = wave[0] if wave else wordmark("dark")
     c_dur = round(total - c_start, 3)
     btn = cta.get("button", "Book a demo")
     els.append(f'''
     <section id="cta" class="clip" data-start="{c_start:.3f}" data-duration="{c_dur:.3f}" data-track-index="10">
       <div class="cta-bg" id="cta-bg">{brand_background() or '<div class="beacon b1" id="b1"></div><div class="beacon b2" id="b2"></div>'}</div>
       <div class="cta-inner">
-        <div class="wm" id="cta-wm">{wordmark("dark")}</div>
+        <div class="wm" id="cta-wm" style="height:auto">{cta_logo_html}</div>
         <div class="cta-eyebrow" id="cta-eyebrow">{esc(cta.get("eyebrow", "Text-first marketing"))}</div>
         <div class="cta-head" id="cta-head">{emphasize(cta.get("headline", "Own the line to your audience"))}</div>
         {f'<div class="cta-sub" id="cta-sub">{esc(cta["subline"])}</div>' if cta.get("subline") else ""}
@@ -471,6 +524,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     js += [
         f'tl.fromTo("#cta-bg", {{opacity: 0}}, {{opacity: 1, duration: {CTA_OVERLAP:.2f}, ease: "power2.inOut"}}, {c_start:.3f});',
         f'tl.fromTo("#cta-wm", {{y: 40, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.5, ease: "power3.out"}}, {D - 0.1:.3f});',
+        *( [wave_js("cta", c_start, c_dur, float(cta.get("wave_amp", 9)))] if wave else [] ),
         f'tl.fromTo("#cta-eyebrow", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {D + 0.2:.3f});',
         f'tl.fromTo("#cta-head .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: "power3.out"}}, {D + 0.25:.3f});',
         f'tl.fromTo("#cta-btn", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, ease: "power3.out"}}, {D + 0.85:.3f});',
