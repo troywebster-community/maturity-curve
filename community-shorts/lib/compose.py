@@ -123,7 +123,7 @@ def wave_js(prefix: str, start: float, dur: float, amp: float, n: int = FLAG_STR
     return (
         f'(function(){{const n={n};const s=[];for(let i=0;i<n;i++)s.push(document.getElementById("{prefix}-fs"+i));'
         f'const o={{p:0}};const draw=()=>{{for(let i=0;i<n;i++){{const t=i/(n-1);const a=o.p-t*Math.PI*2.2;'
-        f'const k=0.15+0.85*t;s[i].style.transform="translateY("+(Math.sin(a)*{amp}*k).toFixed(2)+"px) scaleY("+(1-0.035*k*Math.cos(a)).toFixed(4)+")";'
+        f'const k=0.15+0.85*t;s[i].style.transform="translateY("+(Math.sin(a)*{amp}*k).toFixed(2)+"px)";'
         f's[i].style.filter="brightness("+(1+0.35*k*Math.cos(a)).toFixed(3)+")";}}}};'
         f'tl.fromTo(o,{{p:0}},{{p:{cycles * 6.2832:.4f},duration:{dur:.3f},ease:"none",immediateRender:false,onUpdate:draw}},{start:.3f});'
         f'draw();}})();'
@@ -395,7 +395,9 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     # --- intro --------------------------------------------------------------------------
     eyebrow = intro.get("eyebrow", "Customer story")
     headline = intro.get("headline", "")
-    if intro.get("style", "overlay") == "card":
+    if intro.get("style") == "none":
+        intro_dur = 0.0            # open straight on the speaker: no title card
+    elif intro.get("style", "overlay") == "card":
         # Full-screen light gradient opener. The video (and its audio) already runs underneath,
         # so the first words land while Community is on screen.
         title = f'<div class="ic-title" id="ic-title">{emphasize(headline)}</div>' if headline else ""
@@ -437,7 +439,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         ]
 
     # --- persistent bug -----------------------------------------------------------------
-    bug_start = intro_dur - 0.1
+    bug_start = max(0.0, intro_dur - 0.1)
     bug_dur = max(0.5, D - bug_start)
     els.append(f'''
     <div id="bug-clip" class="clip" data-start="{bug_start:.3f}" data-duration="{bug_dur:.3f}" data-track-index="4">
@@ -516,7 +518,9 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     <div id="{cid}-dimclip" class="clip" data-start="{at:.3f}" data-duration="{dur:.3f}" data-track-index="5"><div class="punch-dim" id="{cid}-dim"></div></div>''')
             js.append(f'tl.fromTo("#{cid}-dim", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {at:.3f});')
             inner = f'<div class="punch" id="{cid}-card"><div class="p-text">{emphasize(c.get("text", ""))}</div></div>'
-            js.append(f'tl.fromTo("#{cid}-card .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, stagger: 0.08, ease: "power3.out"}}, {at:.3f});')
+            n_words = len(re.sub(r"\*\*", "", c.get("text", "")).split())
+            stagger = min(0.08, 0.5 / max(1, n_words))    # long lines still land fast
+            js.append(f'tl.fromTo("#{cid}-card .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.4, stagger: {stagger:.3f}, ease: "power3.out"}}, {at:.3f});')
             js.append(f'tl.fromTo("#{cid}-card", {{scale: 1}}, {{scale: 1.05, duration: {dur:.3f}, ease: "sine.inOut"}}, {at:.3f});')
         elif kind == "punch":
             inner = f'<div class="punch" id="{cid}-card"><div class="p-text">{emphasize(c.get("text", ""))}</div></div>'
@@ -647,7 +651,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
             f'tl.fromTo("#cta-bg", {{opacity: 0}}, {{opacity: 1, duration: {CTA_OVERLAP:.2f}, ease: "power2.inOut"}}, {c_start:.3f});',
             f'tl.fromTo("#cta-flag", {{y: 40, opacity: 0, scale: 0.92}}, {{y: 0, opacity: 1, scale: 1, duration: 0.55, ease: "power3.out"}}, {D - 0.15:.3f});',
             f'tl.fromTo("#cta-line", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, ease: "power3.out"}}, {D + 0.3:.3f});',
-            wave_js("ctaf", c_start, c_dur, float(cta.get("wave_amp", 22)), FLAG_ONLY_STRIPS),
+            wave_js("ctaf", c_start, c_dur, float(cta.get("wave_amp", 16)), FLAG_ONLY_STRIPS),
         ]
     else:
         els.append(f'''

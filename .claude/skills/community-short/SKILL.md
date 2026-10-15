@@ -71,6 +71,8 @@ All commands run from `community-shorts/`.
      the result in their words, wrap the key word in `**...**` for the blue marker), `duration`.
      `"style": "overlay"` (default) floats it over the hook; `"style": "card"` is a full-screen
      light gradient opener (good at 1.0s, headline optional) with the hook audio running under it.
+     `"style": "none"` opens straight on the speaker. Prefer it for social: the first second
+     should be a person saying the strongest line, not text to read.
    - `ranges`: `[{"start", "end", "beat"}]`. Optional per range: `"zoom": 1.15`;
      `"video_from": <source seconds>` keeps this range's audio but shows the picture from another
      moment (b-roll). Use it whenever the source shows graphics, text cards or someone else while
