@@ -124,6 +124,26 @@ All commands run from `community-shorts/`.
 
 8. **Iterate** on feedback by editing `plan.json` and re-rendering. Never re-transcribe.
 
+## Videos with no voiceover (b-roll, walkthroughs, live footage)
+
+When the footage has no usable talking, the music and the graphics tell the story:
+
+- `"captions": {"enabled": false}` and `"source_volume": 0.3` (live room sound low under the music).
+- Make an original track to measure: `"music": {"volume": 0.9, "duck": false, "generate": {"bpm": 124,
+  "sections": "riser:0-0.968,drop:0.968-16.45,break:16.45-18.39,riser:18.39-20.32,lift:20.32-47,outro:47-50"}}`
+  (`lib/music.py`; sections are riser, drop, break, lift, outro, in output seconds). It is
+  synthesized from scratch, so it is royalty-free. Swap in a licensed `"file"` if the user has one.
+- Cut on the beat: at 124 bpm one beat is 0.4839s. Build ranges as (source start, beats) with
+  `"snap_start": false, "snap_end": false`, 4 beats in calmer parts and 2 in the high-energy part.
+  Per range `"speed": 1.25` speeds a shot up; `"volume"` sets its live sound.
+- `"flashes": [seconds, ...]` puts a quick white flash on the big cuts (drops, section changes).
+- Story with graphics: `punch` for the hook and turns, `stat` for numbers (`"count": false` for
+  values like "17–19%" or "30→100"), `chip` for features, `quote` for one customer line,
+  and `sms`: a phone that slides up showing a real text the customer sent
+  (`"name"`, `"avatar"`, `"image"` paths relative to the project folder, optional `"caption"`).
+  Use the customer's real message image (from their deck or screenshots), never a made-up one.
+- Feature points from a sales slide go in as chips; never show the slide itself.
+
 ## Hard rules
 
 - On-screen numbers must be said in the footage or come from the `community-case-studies` skill.

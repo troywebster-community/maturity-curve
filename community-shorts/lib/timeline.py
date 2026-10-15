@@ -107,6 +107,11 @@ class Envelope:
         return t
 
 
+def out_len(r: dict) -> float:
+    """Seconds a range lasts in the output (a sped-up range is shorter)."""
+    return (r["end"] - r["start"]) / float(r.get("speed", 1.0))
+
+
 def output_words(ranges: list[dict], words: list[dict], corrections: dict[str, str]) -> list[dict]:
     """Words that survive the cut, with output-timeline times: t_out = t_src - range.start + offset."""
     fixes = {k.lower(): v for k, v in (corrections or {}).items()}
@@ -123,11 +128,11 @@ def output_words(ranges: list[dict], words: list[dict], corrections: dict[str, s
                     text = fixes[key] + trail
                 result.append({
                     "text": text,
-                    "start": round(max(w["start"], a) - a + offset, 3),
-                    "end": round(min(w["end"], b) - a + offset, 3),
+                    "start": round((max(w["start"], a) - a) / float(r.get("speed", 1.0)) + offset, 3),
+                    "end": round((min(w["end"], b) - a) / float(r.get("speed", 1.0)) + offset, 3),
                     "segment": idx,
                 })
-        offset += b - a
+        offset += out_len(r)
     return result
 
 

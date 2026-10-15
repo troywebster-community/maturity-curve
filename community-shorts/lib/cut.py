@@ -73,7 +73,9 @@ def frame_filter(info: dict, framing: dict, zoom: float) -> tuple[str, bool]:
 
 
 def extract(source: Path, info: dict, r: dict, framing: dict, grade: str, out: Path, draft: bool) -> None:
-    dur = r["end"] - r["start"]
+    src_dur = r["end"] - r["start"]
+    speed = float(r.get("speed", 1.0))          # >1 plays faster (cut to the beat)
+    dur = src_dur / speed
     fr = {**framing, **(r.get("framing") or {})}          # a range can reframe its own shot
     vf, complex_ = frame_filter(info, fr, float(fr.get("zoom", 1.0)) * float(r.get("zoom", 1.0)))
     g = grade_filter(r.get("grade", grade))
@@ -84,14 +86,24 @@ def extract(source: Path, info: dict, r: dict, framing: dict, grade: str, out: P
     if "hold_from" in r:
         v_len = max(0.1, min(dur, float(r["hold_from"]) - float(r.get("video_from", r["start"]))))
         vf = f"{vf},tpad=stop_mode=clone:stop_duration={dur - v_len + 0.1:.3f}"
+    if speed != 1.0:
+        vf = f"{vf},setpts=PTS/{speed:.4f}"
     vf = f"{vf},fps={FPS},format=yuv420p"
-    af = f"afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0, dur - 0.03):.3f}:d=0.03"
+    tempo = ""
+    s_left = speed
+    while s_left > 2.0:                          # atempo takes 0.5-2.0 per stage
+        tempo += "atempo=2.0,"
+        s_left /= 2.0
+    if s_left != 1.0:
+        tempo += f"atempo={s_left:.4f},"
+    af = (f"{tempo}volume={float(r.get('volume', 1.0)):.3f},"
+          f"afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0, dur - 0.03):.3f}:d=0.03")
     # video_from: keep this range's audio but show picture from another moment (b-roll).
     v_at = float(r.get("video_from", r["start"]))
-    cmd = ["ffmpeg", "-y", "-ss", f"{v_at:.3f}", "-t", f"{v_len:.3f}", "-i", str(source)]
+    cmd = ["ffmpeg", "-y", "-ss", f"{v_at:.3f}", "-t", f"{v_len * speed:.3f}", "-i", str(source)]
     audio_in = "0"
     if "video_from" in r or "hold_from" in r:
-        cmd += ["-ss", f"{r['start']:.3f}", "-t", f"{dur:.3f}", "-i", str(source)]
+        cmd += ["-ss", f"{r['start']:.3f}", "-t", f"{src_dur:.3f}", "-i", str(source)]
         audio_in = "1"
     if complex_:
         cmd += ["-filter_complex", vf + "[v]", "-map", "[v]", "-map", f"{audio_in}:a:0?"]

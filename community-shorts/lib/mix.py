@@ -11,19 +11,27 @@ from .common import run
 LUFS, TP, LRA = -14.0, -1.0, 11.0
 
 
-def _graph(total: float, voice_end: float, music: Path | None, music_vol: float) -> tuple[list[str], str]:
+def _graph(total: float, voice_end: float, music: Path | None, music_vol: float,
+           duck: bool = True) -> tuple[list[str], str]:
     inputs: list[str] = []
     if music is None:
         return inputs, f"[1:a]apad=whole_dur={total:.3f},atrim=0:{total:.3f}[mix]"
     inputs = ["-stream_loop", "-1", "-i", str(music)]
-    return inputs, (
+    if duck:
+        # Speech-led video: music sits low under the voice, lifts after the last word.
+        level = f"volume='if(gte(t,{voice_end:.3f}),{min(1.0, music_vol * 2.4):.3f},{music_vol:.3f})':eval=frame"
+        side = "[bed][key]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=350[ducked];"
+    else:
+        # Music-led video: steady level, the source audio rides underneath.
+        level = f"volume={music_vol:.3f}"
+        side = "[key]anullsink;[bed]anull[ducked];"
+    graph = (
         f"[1:a]apad=whole_dur={total:.3f},atrim=0:{total:.3f},asplit=2[voice][key];"
-        f"[2:a]atrim=0:{total:.3f},asetpts=PTS-STARTPTS,aformat=channel_layouts=stereo,"
-        f"volume='if(gte(t,{voice_end:.3f}),{min(1.0, music_vol * 2.4):.3f},{music_vol:.3f})':eval=frame,"
+        f"[2:a]atrim=0:{total:.3f},asetpts=PTS-STARTPTS,aformat=channel_layouts=stereo,{level},"
         f"afade=t=in:st=0:d=0.6,afade=t=out:st={max(0.0, total - 0.9):.3f}:d=0.9[bed];"
-        f"[bed][key]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=350[ducked];"
-        f"[voice][ducked]amix=inputs=2:normalize=0:duration=first[mix]"
+        f"{side}[voice][ducked]amix=inputs=2:normalize=0:duration=first[mix]"
     )
+    return inputs, graph
 
 
 def _measure(cmd_prefix: list[str], graph: str) -> dict | None:
@@ -40,8 +48,8 @@ def _measure(cmd_prefix: list[str], graph: str) -> dict | None:
 
 
 def finish(picture: Path, base: Path, out: Path, total: float, voice_end: float,
-           music: Path | None = None, music_vol: float = 0.16) -> None:
-    extra, graph = _graph(total, voice_end, music, music_vol)
+           music: Path | None = None, music_vol: float = 0.16, duck: bool = True) -> None:
+    extra, graph = _graph(total, voice_end, music, music_vol, duck)
     prefix = ["ffmpeg", "-y", "-hide_banner", "-nostats", "-i", str(picture), "-i", str(base), *extra]
     m = _measure(prefix, graph)
     if m:

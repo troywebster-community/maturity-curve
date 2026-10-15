@@ -42,10 +42,11 @@ def emphasize(text: str) -> str:
     for p in parts:
         if p.startswith("**") and p.endswith("**"):
             words = p[2:-2].split()
-            out.append(" ".join(f'<span class="hw"><span class="em">{esc(w)}</span></span>' for w in words))
+            out.append("".join(f'<span class="hw"><span class="em">{esc(w)}</span></span>' for w in words))
         else:
-            out.append(" ".join(f'<span class="hw">{esc(w)}</span>' for w in p.split()))
-    return " ".join(x for x in out if x)
+            out.append("".join(f'<span class="hw">{esc(w)}</span>' for w in p.split()))
+    # Word gaps come from CSS margin: the renderer can drop plain spaces between animated words.
+    return "".join(x for x in out if x)
 
 
 def parse_number(value: str):
@@ -187,7 +188,8 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .eyebrow { margin-top: 34px; font-size: 26px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.86; }
 .headline { margin-top: 18px; font-size: 92px; line-height: 1.04; font-weight: 800; letter-spacing: -0.035em;
   text-shadow: 0 6px 30px oklch(0.16 0.03 260 / 0.55); }
-.hw { display: inline-block; }
+.hw { display: inline-block; margin-right: 0.26em; }
+.hw:last-child { margin-right: 0; }
 .em { position: relative; display: inline-block; z-index: 0; margin: 0 12px; }
 .em::before { content: ""; position: absolute; left: -8px; right: -8px; top: 12%; bottom: 4%; border-radius: 12px;
   background: var(--primary); z-index: -1; }
@@ -257,6 +259,26 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .punch .p-text { font-size: 104px; line-height: 1.02; font-weight: 900; letter-spacing: -0.045em;
   text-shadow: 0 8px 36px oklch(0.16 0.03 260 / 0.6); }
 
+/* phone mock (sms callout) */
+.phone-wrap { position: absolute; inset: 0; }
+.phone-dim { position: absolute; inset: 0; background: oklch(0.16 0.03 260 / 0.55); }
+.phone { position: absolute; left: 50%; top: 300px; width: 620px; height: 1150px; margin-left: -310px; border-radius: 86px;
+  background: oklch(0.16 0.01 260); padding: 18px; box-shadow: 0 40px 90px oklch(0.16 0.03 260 / 0.55); }
+.phone-screen { position: relative; width: 100%; height: 100%; border-radius: 70px; overflow: hidden; background: oklch(0.99 0 0); }
+.phone-island { position: absolute; left: 50%; top: 22px; width: 170px; height: 48px; margin-left: -85px; border-radius: 30px; background: oklch(0.12 0 0); }
+.phone-time { position: absolute; left: 56px; top: 28px; font-size: 30px; font-weight: 600; color: oklch(0.12 0 0); }
+.phone-head { position: absolute; left: 0; right: 0; top: 96px; height: 200px; background: oklch(0.97 0 0);
+  border-bottom: 1px solid oklch(0.9 0 0); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.phone-avatar { width: 108px; height: 108px; border-radius: 50%; object-fit: cover; background: oklch(0.12 0 0); }
+.phone-name { font-size: 26px; font-weight: 600; color: oklch(0.12 0 0); }
+.phone-msg { position: absolute; right: 20px; bottom: 116px; width: 545px; }
+.phone-msg img { width: 100%; display: block; }
+.phone-field { position: absolute; left: 30px; right: 30px; bottom: 34px; height: 64px; border-radius: 34px; border: 2px solid oklch(0.9 0 0);
+  font-size: 24px; color: oklch(0.65 0 0); display: flex; align-items: center; padding-left: 28px; }
+.phone-caption { position: absolute; left: 70px; right: 70px; top: 1490px; text-align: center; font-size: 46px; line-height: 1.15;
+  font-weight: 800; letter-spacing: -0.02em; color: var(--warm-white); text-shadow: 0 6px 26px oklch(0.16 0.03 260 / 0.7); }
+#flash { position: absolute; inset: 0; background: oklch(0.99 0.002 80); opacity: 0; }
+
 /* captions */
 #captions { position: absolute; left: 70px; right: 70px; top: 0; height: 100%; }
 .cap { position: absolute; left: 0; right: 0; top: CAPTION_TOPpx; display: flex; flex-wrap: wrap; justify-content: center;
@@ -321,6 +343,19 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     dst_video = hf_dir / "assets" / "base.mp4"
     shutil.copyfile(base_video, dst_video)
 
+    # Extra images a plan uses (phone mocks, customer logos): copied into assets/extra/
+    extra_dir = hf_dir / "assets" / "extra"
+    extra_dir.mkdir(exist_ok=True)
+
+    def extra(path: str) -> str:
+        src = Path(path)
+        if not src.is_absolute():
+            src = Path(plan.get("_dir", ".")) / src
+        if not src.exists():
+            raise FileNotFoundError(f"image not found: {src}")
+        shutil.copyfile(src, extra_dir / src.name)
+        return f"assets/extra/{src.name}"
+
     D = round(base_duration, 3)
     intro = plan.get("intro") or {}
     cta = plan.get("cta") or {}
@@ -339,7 +374,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     # --- slow push-in per segment (makes jump cuts feel intentional) --------------------
     t = 0.0
     for i, r in enumerate(ranges):
-        seg = r["end"] - r["start"]
+        seg = (r["end"] - r["start"]) / float(r.get("speed", 1.0))
         z0, z1 = (1.0, 1.045) if i % 2 == 0 else (1.045, 1.0)
         js.append(f'tl.fromTo("#stage", {{scale: {z0}}}, {{scale: {z1}, duration: {seg:.3f}, ease: "sine.inOut", '
                   f'immediateRender: {"true" if i == 0 else "false"}}}, {t:.3f});')
@@ -444,7 +479,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
                 f'tl.fromTo("#{cid}-card", {{y: 50, opacity: 0, scale: 0.96}}, {{y: 0, opacity: 1, scale: 1, duration: 0.45, ease: "power3.out"}}, {at:.3f});',
                 f'tl.fromTo("#{cid}-fill", {{scaleX: 0}}, {{scaleX: 1, duration: {min(1.4, dur - 0.6):.3f}, ease: "power2.out"}}, {at + 0.25:.3f});',
             ]
-            if num:
+            if num and c.get("count", True):          # "count": false for ranges like 17–19%
                 pre, val, suf, dec, commas = num
                 fmt = f"let s=o.v.toFixed({dec});"
                 if commas:
@@ -466,6 +501,32 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         elif kind == "punch":
             inner = f'<div class="punch" id="{cid}-card"><div class="p-text">{emphasize(c.get("text", ""))}</div></div>'
             js.append(f'tl.fromTo("#{cid}-card .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.4, stagger: 0.07, ease: "power3.out"}}, {at:.3f});')
+        elif kind == "sms":
+            avatar = f'<img class="phone-avatar" src="{extra(c["avatar"])}" alt="" />' if c.get("avatar") else '<div class="phone-avatar"></div>'
+            cap = f'<div class="phone-caption" id="{cid}-cap">{emphasize(c["caption"])}</div>' if c.get("caption") else ""
+            els.append(f'''
+    <section id="{cid}" class="clip" data-start="{at:.3f}" data-duration="{dur:.3f}" data-track-index="7">
+      <div class="phone-wrap" id="{cid}-card">
+        <div class="phone-dim"></div>
+        <div class="phone" id="{cid}-phone"><div class="phone-screen">
+          <div class="phone-island"></div><div class="phone-time">{esc(c.get("time", "11:00"))}</div>
+          <div class="phone-head">{avatar}<div class="phone-name">{esc(c.get("name", ""))}</div></div>
+          <div class="phone-msg" id="{cid}-msg"><img src="{extra(c["image"])}" alt="" /></div>
+          <div class="phone-field">Text Message · SMS</div>
+        </div></div>
+        {cap}
+      </div>
+    </section>''')
+            js += [
+                f'tl.fromTo("#{cid}-card", {{opacity: 0}}, {{opacity: 1, duration: 0.2}}, {at:.3f});',
+                f'tl.fromTo("#{cid}-phone", {{y: 900}}, {{y: 0, duration: 0.55, ease: "power3.out"}}, {at:.3f});',
+                f'tl.fromTo("#{cid}-msg", {{y: 40, opacity: 0, scale: 0.9}}, {{y: 0, opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.4)"}}, {at + 0.6:.3f});',
+                f'tl.to("#{cid}-card", {{opacity: 0, duration: 0.25}}, {at + dur - 0.25:.3f});',
+            ]
+            if c.get("caption"):
+                js.append(f'tl.fromTo("#{cid}-cap .hw", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.35, stagger: 0.05, ease: "power3.out"}}, {at + 0.9:.3f});')
+            quote_windows.append((at, at + dur))
+            continue
         elif kind == "quote":
             who = c.get("by") or speaker.get("name", "")
             role = c.get("role", "")
@@ -496,6 +557,13 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
       {inner}
     </div>''')
         busy.append((at, at + dur))
+
+    # --- beat flashes -------------------------------------------------------------------
+    if plan.get("flashes"):
+        els.append(f'''
+    <div id="flash-clip" class="clip" data-start="0" data-duration="{D:.3f}" data-track-index="9"><div id="flash"></div></div>''')
+        for ft in plan["flashes"]:
+            js.append(f'tl.fromTo("#flash", {{opacity: 0.85}}, {{opacity: 0, duration: 0.22, ease: "power2.out", immediateRender: false}}, {float(ft):.3f});')
 
     # --- captions -----------------------------------------------------------------------
     cap_cfg = plan.get("captions") or {}

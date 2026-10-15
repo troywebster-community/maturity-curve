@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib import compose, cut, mix  # noqa: E402
 from lib.common import FPS, H, PROJECTS, ROOT, W, probe, project_dir, resolve, run  # noqa: E402
-from lib.timeline import Envelope, output_words, resolve_anchor, snap_ranges  # noqa: E402
+from lib.timeline import Envelope, out_len, output_words, resolve_anchor, snap_ranges  # noqa: E402
 
 HYPERFRAMES = "hyperframes@0.8.142"
 TARGET = (34.0, 48.0)   # final runtime window in seconds, CTA included
@@ -92,6 +92,7 @@ def cmd_transcribe(a) -> None:
 def load(plan_path: Path):
     plan = json.loads(plan_path.read_text())
     proj = plan_path.parent
+    plan["_dir"] = str(proj)
     source = resolve(plan["source"], proj)
     if not source.exists():
         sys.exit(f"source video not found: {source}")
@@ -101,6 +102,8 @@ def load(plan_path: Path):
         sys.exit(f"{words_path} missing. Run: python shorts.py transcribe {source}")
     words = json.loads(words_path.read_text())
     ranges = snap_ranges(plan["ranges"], words, info["duration"], Envelope(source))
+    for r in ranges:
+        r.setdefault("volume", float(plan.get("source_volume", 1.0)))
     # Alternate a punch-in on consecutive cuts so jump cuts read as intentional.
     if plan.get("auto_punch", True):
         for i, r in enumerate(ranges):
@@ -110,15 +113,15 @@ def load(plan_path: Path):
 
 
 def describe(plan, ranges, owords) -> float:
-    base = sum(r["end"] - r["start"] for r in ranges)
+    base = sum(out_len(r) for r in ranges)
     cta = float((plan.get("cta") or {}).get("duration", 3.0)) - compose.CTA_OVERLAP
     print(f"\n{'#':>2} {'src in':>8} {'src out':>8} {'len':>5} {'out at':>7}  beat / words")
     t = 0.0
     for i, r in enumerate(ranges):
         seg_words = " ".join(w["text"] for w in owords if w["segment"] == i)
-        print(f"{i:>2} {r['start']:8.2f} {r['end']:8.2f} {r['end'] - r['start']:5.1f} {t:7.2f}  "
+        print(f"{i:>2} {r['start']:8.2f} {r['end']:8.2f} {out_len(r):5.1f} {t:7.2f}  "
               f"[{r.get('beat', '')}] {seg_words[:90]}{'...' if len(seg_words) > 90 else ''}")
-        t += r["end"] - r["start"]
+        t += out_len(r)
     print(f"\nspeech {base:.1f}s + end card {cta + compose.CTA_OVERLAP:.1f}s "
           f"(overlapping the last {compose.CTA_OVERLAP}s of speech) = {base + cta:.1f}s total")
     for n, c in enumerate(plan.get("callouts") or []):
@@ -183,12 +186,20 @@ def cmd_render(a) -> None:
     print("4/4 mixing audio and finishing")
     music = None
     mcfg = plan.get("music") or {}
-    if mcfg.get("file"):
+    if mcfg.get("generate"):
+        # Original track made to measure (lib/music.py): same length as the video, sections on the beat.
+        from lib import music as music_lib
+        gen = mcfg["generate"]
+        music = music_lib.write(work / "music.wav", meta["total"], float(gen.get("bpm", 124)),
+                                music_lib.parse_sections(gen["sections"]))
+        print(f"  generated music track ({gen.get('bpm', 124)} bpm)")
+    elif mcfg.get("file"):
         music = resolve(mcfg["file"], proj)
         if not music.exists():
             sys.exit(f"music file not found: {music}")
     out = proj / (f"{name}_draft.mp4" if a.draft else f"{name}.mp4")
-    mix.finish(picture, base, out, meta["total"], D, music, float(mcfg.get("volume", 0.16)))
+    mix.finish(picture, base, out, meta["total"], D, music, float(mcfg.get("volume", 0.16)),
+               duck=bool(mcfg.get("duck", True)))
 
     report = qc(out, ranges, plan)
     print(f"\ndone in {time.time() - t0:.0f}s -> {out.relative_to(ROOT)}")
@@ -202,7 +213,7 @@ def qc(video: Path, ranges: list[dict] | None = None, plan: dict | None = None) 
     if ranges:
         t = 0.0
         for r in ranges[:-1]:
-            t += r["end"] - r["start"]
+            t += out_len(r)
             times.append(t + 0.25)
     cta = float(((plan or {}).get("cta") or {}).get("duration", 3.0))
     times += [total - cta + 0.9, total - 0.3]
