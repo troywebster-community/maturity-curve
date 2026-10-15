@@ -142,7 +142,12 @@ When the footage has no usable talking, the music and the graphics tell the stor
   and `sms`: a phone that slides up showing a real text the customer sent
   (`"name"`, `"avatar"`, `"image"` paths relative to the project folder, optional `"caption"`).
   Use the customer's real message image (from their deck or screenshots), never a made-up one.
-- Feature points from a sales slide go in as chips; never show the slide itself.
+- `feature`: a light card with a `kicker`, a `text` title, an optional `sub`, and `tags` that
+  pop in one by one (platforms like Fanatics Live / Whatnot / eBay Live / YouTube, or what fans
+  collect like NFL / NBA / MLB / Pokémon). Good for "target by..." points.
+- The closing line can hold into the end card: a `punch` with `"dim": true` that runs until the
+  video ends; the end card fades in over it.
+- Feature points from a sales slide go in as chips or feature cards; never show the slide itself.
 
 ## Hard rules
 

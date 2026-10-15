@@ -259,6 +259,18 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .punch .p-text { font-size: 104px; line-height: 1.02; font-weight: 900; letter-spacing: -0.045em;
   text-shadow: 0 8px 36px oklch(0.16 0.03 260 / 0.6); }
 
+/* feature card: title, optional line, tags that pop in one by one */
+.feat { padding: 44px 46px 48px; border-radius: 40px; background: oklch(0.99 0.002 80 / 0.94); color: var(--foreground);
+  box-shadow: 0 24px 60px oklch(0.45 0.12 245 / 0.28); }
+.feat .f-kicker { font-size: 26px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-foreground); }
+.feat .f-title { margin-top: 12px; font-size: 64px; line-height: 1.06; font-weight: 800; letter-spacing: -0.03em; }
+.feat .f-sub { margin-top: 16px; font-size: 36px; line-height: 1.3; font-weight: 500; color: var(--muted-foreground); }
+.feat .em { color: var(--warm-white); }
+.punch-dim { position: absolute; inset: 0; background: oklch(0.16 0.03 260 / 0.5); }
+.feat .f-tags { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 16px; }
+.feat .f-tag { display: inline-flex; align-items: center; height: 76px; padding: 0 30px; border-radius: 999px;
+  background: var(--primary); color: var(--warm-white); font-size: 36px; font-weight: 700; letter-spacing: -0.01em; }
+
 /* phone mock (sms callout) */
 .phone-wrap { position: absolute; inset: 0; }
 .phone-dim { position: absolute; inset: 0; background: oklch(0.16 0.03 260 / 0.55); }
@@ -498,9 +510,32 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
                 f'tl.fromTo("#{cid}-card", {{x: -80, opacity: 0}}, {{x: 0, opacity: 1, duration: 0.45, ease: "power3.out"}}, {at:.3f});',
                 f'tl.fromTo("#{cid}-card .tick", {{scale: 0.4}}, {{scale: 1, duration: 0.35, ease: "back.out(1.6)"}}, {at + 0.12:.3f});',
             ]
+        elif kind == "punch" and c.get("dim"):
+            # Hero line: dim the footage behind it so it reads for its whole run.
+            els.append(f'''
+    <div id="{cid}-dimclip" class="clip" data-start="{at:.3f}" data-duration="{dur:.3f}" data-track-index="5"><div class="punch-dim" id="{cid}-dim"></div></div>''')
+            js.append(f'tl.fromTo("#{cid}-dim", {{opacity: 0}}, {{opacity: 1, duration: 0.4}}, {at:.3f});')
+            inner = f'<div class="punch" id="{cid}-card"><div class="p-text">{emphasize(c.get("text", ""))}</div></div>'
+            js.append(f'tl.fromTo("#{cid}-card .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.45, stagger: 0.08, ease: "power3.out"}}, {at:.3f});')
+            js.append(f'tl.fromTo("#{cid}-card", {{scale: 1}}, {{scale: 1.05, duration: {dur:.3f}, ease: "sine.inOut"}}, {at:.3f});')
         elif kind == "punch":
             inner = f'<div class="punch" id="{cid}-card"><div class="p-text">{emphasize(c.get("text", ""))}</div></div>'
             js.append(f'tl.fromTo("#{cid}-card .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.4, stagger: 0.07, ease: "power3.out"}}, {at:.3f});')
+        elif kind == "feature":
+            kick = f'<div class="f-kicker">{esc(c["kicker"])}</div>' if c.get("kicker") else ""
+            sub = f'<div class="f-sub">{esc(c["sub"])}</div>' if c.get("sub") else ""
+            tags = "".join(f'<span class="f-tag">{esc(t)}</span>' for t in c.get("tags", []))
+            inner = (f'<div class="feat" id="{cid}-card">{kick}<div class="f-title" id="{cid}-title">{emphasize(c.get("text", ""))}</div>'
+                     f'{sub}{f"<div class=f-tags>{tags}</div>" if tags else ""}</div>')
+            js += [
+                f'tl.fromTo("#{cid}-card", {{y: 50, opacity: 0, scale: 0.96}}, {{y: 0, opacity: 1, scale: 1, duration: 0.45, ease: "power3.out"}}, {at:.3f});',
+                f'tl.fromTo("#{cid}-title .hw", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.35, stagger: 0.04, ease: "power3.out"}}, {at + 0.1:.3f});',
+            ]
+            if c.get("sub"):
+                js.append(f'tl.fromTo("#{cid}-card .f-sub", {{opacity: 0}}, {{opacity: 1, duration: 0.35}}, {at + 0.45:.3f});')
+            if tags:
+                step = min(0.3, max(0.12, (dur - 1.6) / max(1, len(c["tags"]))))
+                js.append(f'tl.fromTo("#{cid}-card .f-tag", {{scale: 0.5, opacity: 0}}, {{scale: 1, opacity: 1, duration: 0.3, stagger: {step:.3f}, ease: "back.out(1.8)"}}, {at + 0.55:.3f});')
         elif kind == "sms":
             avatar = f'<img class="phone-avatar" src="{extra(c["avatar"])}" alt="" />' if c.get("avatar") else '<div class="phone-avatar"></div>'
             cap = f'<div class="phone-caption" id="{cid}-cap">{emphasize(c["caption"])}</div>' if c.get("caption") else ""
