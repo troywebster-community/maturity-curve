@@ -265,7 +265,7 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .feat .f-kicker { font-size: 26px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted-foreground); }
 .feat .f-title { margin-top: 12px; font-size: 64px; line-height: 1.06; font-weight: 800; letter-spacing: -0.03em; }
 .feat .f-sub { margin-top: 16px; font-size: 36px; line-height: 1.3; font-weight: 500; color: var(--muted-foreground); }
-.feat .em { color: var(--warm-white); }
+.feat .em, .ic-title .em, .cta-head .em { color: var(--warm-white); }
 .punch-dim { position: absolute; inset: 0; background: oklch(0.16 0.03 260 / 0.5); }
 .feat .f-tags { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 16px; }
 .feat .f-tag { display: inline-flex; align-items: center; height: 76px; padding: 0 30px; border-radius: 999px;
