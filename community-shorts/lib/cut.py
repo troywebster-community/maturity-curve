@@ -25,6 +25,20 @@ TONEMAP = ("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,"
            "tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p")
 
 
+IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp"}
+
+
+def probe_any(path: Path) -> dict:
+    """probe() for videos, plus still images (shown as clips of any length, silent)."""
+    if path.suffix.lower() in IMAGE_EXT:
+        from PIL import Image
+        w, h = Image.open(path).size
+        return {"width": w, "height": h, "duration": 3600.0, "fps": FPS, "hdr": False,
+                "has_audio": False, "orientation": "portrait" if h > w else "landscape", "image": True}
+    from .common import probe
+    return {**probe(path), "image": False}
+
+
 def grade_filter(grade: str | None) -> str:
     if not grade:
         return ""
@@ -100,9 +114,16 @@ def extract(source: Path, info: dict, r: dict, framing: dict, grade: str, out: P
           f"afade=t=in:st=0:d=0.03,afade=t=out:st={max(0.0, dur - 0.03):.3f}:d=0.03")
     # video_from: keep this range's audio but show picture from another moment (b-roll).
     v_at = float(r.get("video_from", r["start"]))
-    cmd = ["ffmpeg", "-y", "-ss", f"{v_at:.3f}", "-t", f"{v_len * speed:.3f}", "-i", str(source)]
+    if info.get("image"):
+        cmd = ["ffmpeg", "-y", "-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", str(source)]
+    else:
+        cmd = ["ffmpeg", "-y", "-ss", f"{v_at:.3f}", "-t", f"{v_len * speed:.3f}", "-i", str(source)]
     audio_in = "0"
-    if "video_from" in r or "hold_from" in r:
+    if info.get("image") or not info.get("has_audio", True):
+        # silent source: a quiet track keeps every segment concat-compatible
+        cmd += ["-f", "lavfi", "-t", f"{dur:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
+        audio_in = "1"
+    elif "video_from" in r or "hold_from" in r:
         cmd += ["-ss", f"{r['start']:.3f}", "-t", f"{src_dur:.3f}", "-i", str(source)]
         audio_in = "1"
     if complex_:
@@ -130,7 +151,7 @@ def build_base(source: Path, info: dict, ranges: list[dict], framing: dict, grad
         p = seg_dir / f"seg_{i:02d}.mp4"
         print(f"  [{i:02d}] {r['start']:7.2f}-{r['end']:7.2f} ({r['end'] - r['start']:4.1f}s) "
               f"zoom {float(r.get('zoom', 1.0)):.2f}  {r.get('beat', '')}")
-        extract(source, info, r, framing, grade, p, draft)
+        extract(Path(r.get("_src", source)), r.get("_info", info), r, framing, grade, p, draft)
         paths.append(p)
     lst = work / "_concat.txt"
     lst.write_text("".join(f"file '{p.resolve()}'\n" for p in paths))

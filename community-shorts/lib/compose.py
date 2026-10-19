@@ -525,6 +525,16 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         elif kind == "punch":
             inner = f'<div class="punch" id="{cid}-card"><div class="p-text">{emphasize(c.get("text", ""))}</div></div>'
             js.append(f'tl.fromTo("#{cid}-card .hw", {{y: 50, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.4, stagger: 0.07, ease: "power3.out"}}, {at:.3f});')
+        elif kind == "sub":
+            # Hand-written caption (translations, or speech the transcript can't read).
+            words_html = "".join(f'<span class="cw"><span class="hl" style="opacity:1"></span>{esc(w)}</span>' if i == 0 and c.get("highlight_first") else f'<span class="cw">{esc(w)}</span>'
+                                 for i, w in enumerate(c.get("text", "").split()))
+            els.append(f'''
+    <div id="{cid}" class="clip" data-start="{at:.3f}" data-duration="{dur:.3f}" data-track-index="8">
+      <div style="position:absolute;left:70px;right:70px;top:0;height:100%"><div class="cap" id="{cid}-cap" style="opacity:1">{words_html}</div></div>
+    </div>''')
+            js.append(f'tl.fromTo("#{cid}-cap", {{opacity: 0, y: 16, scale: 0.94}}, {{opacity: 1, y: 0, scale: 1, duration: 0.14, ease: "power3.out"}}, {at:.3f});')
+            continue
         elif kind == "feature":
             kick = f'<div class="f-kicker">{esc(c["kicker"])}</div>' if c.get("kicker") else ""
             sub = f'<div class="f-sub">{esc(c["sub"])}</div>' if c.get("sub") else ""

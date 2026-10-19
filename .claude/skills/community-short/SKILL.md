@@ -151,6 +151,20 @@ When the footage has no usable talking, the music and the graphics tell the stor
   video ends; the end card fades in over it.
 - Feature points from a sales slide go in as chips or feature cards; never show the slide itself.
 
+## Montage shorts from many sources (industry or theme videos)
+
+One short can mix several videos and still screenshots:
+- `"sources": {"key": "path"}` next to `"source"` (the main one, key `main`). Each range picks
+  one with `"source": "key"`. Images (png, jpg, webp) play as silent clips of any length:
+  `{"source": "billboard", "start": 0, "end": 1.94}`; use `framing` focus/zoom to frame the part
+  of a screenshot that matters, and `"grade": "none"` so screenshots keep their colors.
+- Captions use `words_<key>.json` in the project folder (copy a transcript's `words.json` from
+  a `transcribe` run). `"captions": false` on a range turns its captions off.
+- `sub` callouts are hand-typed captions (`at`, `duration`, `text`), e.g. English lines for
+  someone speaking Spanish. Crop burned-in subtitles and app UI out with `framing.box`.
+- Hook with the most surprising real moment (a celebrity holding up their phone number) plus a
+  question over it, then a quick beat-cut montage of each brand's "Text X to..." call to action.
+
 ## Hard rules
 
 - On-screen numbers must be said in the footage or come from the `community-case-studies` skill.

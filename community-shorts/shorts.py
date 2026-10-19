@@ -98,17 +98,48 @@ def load(plan_path: Path):
         sys.exit(f"source video not found: {source}")
     info = probe(source)
     words_path = proj / "words.json"
-    if not words_path.exists():
+    if not words_path.exists() and not plan.get("sources"):
         sys.exit(f"{words_path} missing. Run: python shorts.py transcribe {source}")
-    words = json.loads(words_path.read_text())
-    ranges = snap_ranges(plan["ranges"], words, info["duration"], Envelope(source))
+
+    # Several sources (videos and still images) can feed one edit: plan["sources"] maps a key
+    # to a file, a range picks one with "source": key. Words for key X live in words_X.json.
+    paths = {"main": source, **{k: resolve(v, proj) for k, v in (plan.get("sources") or {}).items()}}
+    infos, words_by, envs = {}, {}, {}
+    for k, pth in paths.items():
+        if not pth.exists():
+            sys.exit(f"source '{k}' not found: {pth}")
+        infos[k] = cut.probe_any(pth)
+        wp = words_path if k == "main" else proj / f"words_{k}.json"
+        words_by[k] = json.loads(wp.read_text()) if wp.exists() else []
+    ranges = []
+    for r in plan["ranges"]:
+        k = r.get("source", "main")
+        if k not in paths:
+            sys.exit(f"range uses unknown source '{k}'")
+        inf = infos[k]
+        exact = inf["image"] or (r.get("snap_start") is False and r.get("snap_end") is False)
+        if exact:
+            rr = dict(r)
+        else:
+            if k not in envs:
+                envs[k] = Envelope(paths[k])
+            rr = snap_ranges([r], words_by[k], inf["duration"], envs[k])[0]
+        rr.update({"_key": k, "_src": str(paths[k]), "_info": inf})
+        ranges.append(rr)
+    words = words_by["main"]
     for r in ranges:
         r.setdefault("volume", float(plan.get("source_volume", 1.0)))
     # Alternate a punch-in on consecutive cuts so jump cuts read as intentional.
     if plan.get("auto_punch", True):
         for i, r in enumerate(ranges):
             r.setdefault("zoom", 1.0 if i % 2 == 0 else float(plan.get("punch_zoom", 1.12)))
-    owords = output_words(ranges, words, plan.get("corrections") or {})
+    owords, offset = [], 0.0
+    for i, r in enumerate(ranges):
+        if r.get("captions", True) is not False:
+            for w in output_words([r], words_by[r["_key"]], plan.get("corrections") or {}):
+                owords.append({**w, "start": round(w["start"] + offset, 3),
+                               "end": round(w["end"] + offset, 3), "segment": i})
+        offset += out_len(r)
     return plan, proj, source, info, ranges, owords
 
 
@@ -157,7 +188,8 @@ def cmd_render(a) -> None:
         framing["mode"] = "crop"
     base = cut.build_base(source, info, ranges, framing, plan.get("grade", "social_bright"), work, a.draft)
     D = probe(base)["duration"]
-    (work / "ranges.snapped.json").write_text(json.dumps(ranges, indent=2))
+    (work / "ranges.snapped.json").write_text(json.dumps(
+        [{k: v for k, v in r.items() if k != "_info"} for r in ranges], indent=2))
     (work / "captions.words.json").write_text(json.dumps(owords, indent=0))
 
     print("2/4 building HyperFrames composition")
