@@ -83,6 +83,8 @@ All commands run from `community-shorts/`.
      `"hold_from": <source seconds>` freezes the picture from that point, for when the shot
      cuts away (to a graphic) a moment before the speaker finishes the word.
    - `target_s`: `[low, high]` runtime window when the brief asks for a length other than ~40s.
+   - `highlight: "text"`: color `**starred**` words and the spoken caption word blue instead of
+     putting a blue box behind them.
      `auto_punch` alternates a 1.12 punch-in on every other cut so jump cuts feel intentional.
    - `callouts`: timed to a phrase the speaker says with `"anchor"` (must survive the cut), or
      `"at"` seconds on the output timeline. Kinds:

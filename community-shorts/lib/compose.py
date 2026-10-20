@@ -28,7 +28,19 @@ from .timeline import chunk_captions, resolve_anchor
 SAFE_TOP = 210
 CAPTION_Y = 1190          # caption block center
 CALLOUT_TOP = 360
-CTA_OVERLAP = 0.45        # end card fades in over the last moments of the video
+CTA_OVERLAP = 0.45
+
+# plan "highlight": "text" colors the starred words (and the spoken caption word) blue
+# instead of putting a blue box behind them.
+HIGHLIGHT_TEXT_CSS = """
+.em { margin: 0; color: oklch(0.76 0.13 240); }
+.em::before { display: none; }
+.feat .em, .ic-title .em, .cta-head .em, .q-text .em { color: var(--primary); }
+.cw .hl { display: none; }
+.cw { text-shadow: 0 0 3px oklch(0.16 0.03 260 / 0.9), 0 3px 0 oklch(0.16 0.03 260 / 0.75),
+  0 6px 26px oklch(0.16 0.03 260 / 0.7); }
+"""
+CAPTION_BLUE = "oklch(0.76 0.13 240)"        # end card fades in over the last moments of the video
 
 
 def esc(s: str) -> str:
@@ -376,6 +388,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     cta_dur = float(cta.get("duration", 3.0))      # end card on screen, crossfade included
     total = round(D + cta_dur - CTA_OVERLAP, 3)
     layout = plan.get("layout") or {}
+    text_hl = plan.get("highlight") == "text"
     callout_top = int(layout.get("callout_top", CALLOUT_TOP))
     intro_dur = float(intro.get("duration", 2.6))
 
@@ -634,7 +647,10 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
             js.append(f'tl.set("#cap{p}", {{opacity: 0}}, {end:.3f});')
             for k, w in enumerate(page):
                 w_end = page[k + 1]["start"] if k + 1 < len(page) else end
-                js.append(f'tl.set("#w{p}_{k} .hl", {{opacity: 1}}, {w["start"]:.3f}); tl.set("#w{p}_{k} .hl", {{opacity: 0}}, {w_end:.3f});')
+                if text_hl:
+                    js.append(f'tl.set("#w{p}_{k}", {{color: "{CAPTION_BLUE}"}}, {w["start"]:.3f}); tl.set("#w{p}_{k}", {{color: "#fbfaf7"}}, {w_end:.3f});')
+                else:
+                    js.append(f'tl.set("#w{p}_{k} .hl", {{opacity: 1}}, {w["start"]:.3f}); tl.set("#w{p}_{k} .hl", {{opacity: 0}}, {w_end:.3f});')
         els.append(f'''
     <div id="captions" class="clip" data-start="0" data-duration="{D:.3f}" data-track-index="8">
       {"".join(cap_html)}
@@ -703,7 +719,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
     <meta name="viewport" content="width={W}, height={H}" />
     <title>{esc(plan.get("name", "community-short"))}</title>
     <script src="assets/vendor/gsap.min.js"></script>
-    <style>{CSS}</style>
+    <style>{CSS}{HIGHLIGHT_TEXT_CSS if text_hl else ""}</style>
   </head>
   <body>
     <div id="root" data-composition-id="main" data-start="0" data-width="{W}" data-height="{H}" data-duration="{total:.3f}">
