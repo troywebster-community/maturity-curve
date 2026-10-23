@@ -230,7 +230,24 @@ def cmd_render(a) -> None:
         if not music.exists():
             sys.exit(f"music file not found: {music}")
     out = proj / (f"{name}_draft.mp4" if a.draft else f"{name}.mp4")
-    mix.finish(picture, base, out, meta["total"], D, music, float(mcfg.get("volume", 0.16)),
+    speech, voice_end = base, D
+    if plan.get("voiceover"):
+        # Voiceover lines laid over the cut's own audio; the music ducks under both.
+        speech = work / "speech.wav"
+        total = meta["total"]
+        cmd = ["ffmpeg", "-y", "-i", str(base)]
+        parts = [f"[0:a]apad=whole_dur={total:.3f},atrim=0:{total:.3f}[a0]"]
+        for k, v in enumerate(plan["voiceover"], 1):
+            cmd += ["-i", str(resolve(v["file"], proj))]
+            ms = int(round(float(v["at"]) * 1000))
+            parts.append(f"[{k}:a]aresample=48000,aformat=channel_layouts=stereo,"
+                         f"volume={float(v.get('volume', plan.get('voiceover_volume', 1.0))):.3f},adelay={ms}|{ms}[a{k}]")
+        n = len(plan["voiceover"]) + 1
+        parts.append("".join(f"[a{k}]" for k in range(n)) +
+                     f"amix=inputs={n}:normalize=0:duration=first,atrim=0:{total:.3f}[vo]")
+        run(cmd + ["-filter_complex", ";".join(parts), "-map", "[vo]", "-ar", "48000", str(speech)])
+        voice_end = total
+    mix.finish(picture, speech, out, meta["total"], voice_end, music, float(mcfg.get("volume", 0.16)),
                duck=bool(mcfg.get("duck", True)))
 
     report = qc(out, ranges, plan)

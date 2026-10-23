@@ -297,6 +297,15 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .phone-name { font-size: 26px; font-weight: 600; color: oklch(0.12 0 0); }
 .phone-msg { position: absolute; right: 20px; bottom: 116px; width: 545px; }
 .phone-msg img { width: 100%; display: block; }
+.phone-initials { display: flex; align-items: center; justify-content: center; background: var(--primary); color: var(--warm-white);
+  font-size: 40px; font-weight: 700; letter-spacing: -0.02em; }
+.phone-msgs { position: absolute; left: 28px; right: 28px; bottom: 120px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.bub { max-width: 480px; padding: 20px 26px; border-radius: 34px 34px 34px 10px; background: oklch(0.93 0.004 260);
+  color: oklch(0.15 0 0); font-size: 34px; line-height: 1.3; font-weight: 450; white-space: pre-line; }
+.bub-card { width: 480px; border-radius: 30px; overflow: hidden; background: oklch(0.93 0.004 260); }
+.bub-card img { width: 100%; display: block; }
+.bub-lt { padding: 14px 22px 2px; font-size: 26px; font-weight: 650; color: oklch(0.15 0 0); }
+.bub-ld { padding: 0 22px 16px; font-size: 22px; color: oklch(0.5 0 0); }
 .phone-field { position: absolute; left: 30px; right: 30px; bottom: 34px; height: 64px; border-radius: 34px; border: 2px solid oklch(0.9 0 0);
   font-size: 24px; color: oklch(0.65 0 0); display: flex; align-items: center; padding-left: 28px; }
 .phone-caption { position: absolute; left: 70px; right: 70px; top: 1490px; text-align: center; font-size: 46px; line-height: 1.15;
@@ -564,7 +573,22 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
                 step = min(0.3, max(0.12, (dur - 1.6) / max(1, len(c["tags"]))))
                 js.append(f'tl.fromTo("#{cid}-card .f-tag", {{scale: 0.5, opacity: 0}}, {{scale: 1, opacity: 1, duration: 0.3, stagger: {step:.3f}, ease: "back.out(1.8)"}}, {at + 0.55:.3f});')
         elif kind == "sms":
-            avatar = f'<img class="phone-avatar" src="{extra(c["avatar"])}" alt="" />' if c.get("avatar") else '<div class="phone-avatar"></div>'
+            if c.get("avatar"):
+                avatar = f'<img class="phone-avatar" src="{extra(c["avatar"])}" alt="" />'
+            else:
+                avatar = f'<div class="phone-avatar phone-initials">{esc(c.get("initials", ""))}</div>'
+            if c.get("bubbles"):
+                # Drawn as HTML so the words stay sharp; "image"/"link_title" add a link preview card.
+                parts = []
+                for b in c["bubbles"]:
+                    if b.get("text"):
+                        parts.append(f'<div class="bub">{esc(b["text"])}</div>')
+                    if b.get("image"):
+                        lt = f'<div class="bub-lt">{esc(b.get("link_title", ""))}</div><div class="bub-ld">{esc(b.get("link_domain", ""))}</div>' if b.get("link_title") else ""
+                        parts.append(f'<div class="bub-card"><img src="{extra(b["image"])}" alt="" />{lt}</div>')
+                msg = f'<div class="phone-msgs" id="{cid}-msg">{"".join(parts)}</div>'
+            else:
+                msg = f'<div class="phone-msg" id="{cid}-msg"><img src="{extra(c["image"])}" alt="" /></div>'
             cap = f'<div class="phone-caption" id="{cid}-cap">{emphasize(c["caption"])}</div>' if c.get("caption") else ""
             els.append(f'''
     <section id="{cid}" class="clip" data-start="{at:.3f}" data-duration="{dur:.3f}" data-track-index="7">
@@ -573,7 +597,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
         <div class="phone" id="{cid}-phone"><div class="phone-screen">
           <div class="phone-island"></div><div class="phone-time">{esc(c.get("time", "11:00"))}</div>
           <div class="phone-head">{avatar}<div class="phone-name">{esc(c.get("name", ""))}</div></div>
-          <div class="phone-msg" id="{cid}-msg"><img src="{extra(c["image"])}" alt="" /></div>
+          {msg}
           <div class="phone-field">Text Message · SMS</div>
         </div></div>
         {cap}

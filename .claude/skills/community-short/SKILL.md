@@ -85,6 +85,10 @@ All commands run from `community-shorts/`.
    - `target_s`: `[low, high]` runtime window when the brief asks for a length other than ~40s.
    - `highlight: "text"`: color `**starred**` words and the spoken caption word blue instead of
      putting a blue box behind them.
+   - `voiceover`: list of `{"file": "vo/line.wav", "at": seconds}` laid over the cut's audio
+     (`voiceover_volume` sets the level). The music ducks under it through the end card.
+   - `sms` callouts take `bubbles` (`[{"text": ...}, {"image": ..., "link_title": ..., "link_domain": ...}]`)
+     to draw sharp text bubbles instead of a screenshot, and `initials` when there is no avatar.
      `auto_punch` alternates a 1.12 punch-in on every other cut so jump cuts feel intentional.
    - `callouts`: timed to a phrase the speaker says with `"anchor"` (must survive the cut), or
      `"at"` seconds on the output timeline. Kinds:
