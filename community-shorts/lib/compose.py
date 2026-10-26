@@ -299,7 +299,19 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .phone-msg img { width: 100%; display: block; }
 .phone-initials { display: flex; align-items: center; justify-content: center; background: var(--primary); color: var(--warm-white);
   font-size: 40px; font-weight: 700; letter-spacing: -0.02em; }
-.phone-msgs { position: absolute; left: 28px; right: 28px; bottom: 120px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.phone-msgs { position: absolute; left: 28px; right: 28px; top: 300px; bottom: 120px; display: flex; flex-direction: column;
+  justify-content: flex-end; align-items: flex-start; overflow: hidden; }
+.bub-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 12px; overflow: hidden; }
+.bub-wrap.me { align-self: flex-end; align-items: flex-end; }
+.bub.me { background: oklch(0.72 0.19 145); color: oklch(0.99 0 0); border-radius: 34px 34px 10px 34px; }
+.bub.dots { display: flex; gap: 10px; padding: 24px 28px; }
+.bub.dots i { width: 16px; height: 16px; border-radius: 50%; background: oklch(0.6 0 0); display: block; }
+.pf-ph { position: absolute; left: 28px; }
+.pf-typed { position: absolute; left: 28px; right: 70px; white-space: nowrap; overflow: hidden; color: oklch(0.15 0 0); font-size: 26px; }
+.pf-typed .ch { opacity: 0; }
+.bub, .pf-typed, .bub-lt { font-family: "Inter", "Noto Color Emoji", sans-serif; }
+.pf-send { position: absolute; right: 8px; top: 8px; width: 44px; height: 44px; border-radius: 50%; background: oklch(0.72 0.19 145);
+  color: white; font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .bub { max-width: 480px; padding: 20px 26px; border-radius: 34px 34px 34px 10px; background: oklch(0.93 0.004 260);
   color: oklch(0.15 0 0); font-size: 34px; line-height: 1.3; font-weight: 450; white-space: pre-line; }
 .bub-card { width: 480px; border-radius: 30px; overflow: hidden; background: oklch(0.93 0.004 260); }
@@ -577,19 +589,61 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
                 avatar = f'<img class="phone-avatar" src="{extra(c["avatar"])}" alt="" />'
             else:
                 avatar = f'<div class="phone-avatar phone-initials">{esc(c.get("initials", ""))}</div>'
+            # bubbles: drawn as HTML so the words stay sharp. Each one can come from the brand (grey, left)
+            # or the fan ("from": "fan", green, right). A fan bubble is typed into the message box first;
+            # a brand reply can show the typing dots first ("typing": seconds). "at" is seconds into the card.
+            bub_js = []
+            field_typed = ""
             if c.get("bubbles"):
-                # Drawn as HTML so the words stay sharp; "image"/"link_title" add a link preview card.
                 parts = []
-                for b in c["bubbles"]:
+                t_next = 0.6
+                for bi, b in enumerate(c["bubbles"]):
+                    bid = f"{cid}-b{bi}"
+                    me = b.get("from") == "fan"
+                    t_b = float(b.get("at", t_next))
+                    if me:
+                        chars = list(b.get("text", ""))
+                        type_dur = min(1.4, max(0.5, 0.05 * len(chars)))
+                        field_typed = "".join(f'<span class="ch">{esc(ch) if ch != " " else "&nbsp;"}</span>' for ch in chars)
+                        bub_js += [
+                            f'tl.set("#{cid}-ph", {{opacity: 0}}, {at + t_b:.3f});',
+                            f'tl.fromTo("#{cid}-typed .ch", {{opacity: 0}}, {{opacity: 1, duration: 0.01, stagger: {type_dur / max(1, len(chars)):.4f}}}, {at + t_b:.3f});',
+                            f'tl.fromTo("#{cid}-send", {{scale: 0.6, opacity: 0}}, {{scale: 1, opacity: 1, duration: 0.15}}, {at + t_b + 0.1:.3f});',
+                        ]
+                        t_b += type_dur + 0.25
+                        bub_js += [
+                            f'tl.set("#{cid}-typed .ch", {{opacity: 0}}, {at + t_b:.3f});',
+                            f'tl.set("#{cid}-send", {{opacity: 0}}, {at + t_b:.3f});',
+                            f'tl.set("#{cid}-ph", {{opacity: 1}}, {at + t_b:.3f});',
+                        ]
+                    elif b.get("typing"):
+                        did = f"{bid}-dots"
+                        parts.append(f'<div class="bub-wrap" id="{did}"><div class="bub dots"><i></i><i></i><i></i></div></div>')
+                        bub_js += [
+                            f'tl.fromTo("#{did}", {{height: 0, opacity: 0}}, {{height: "auto", opacity: 1, duration: 0.2}}, {at + t_b:.3f});',
+                            f'tl.fromTo("#{did} i", {{opacity: 0.3}}, {{opacity: 1, duration: 0.25, stagger: 0.12, repeat: {int(float(b["typing"]) / 0.5)}, yoyo: true}}, {at + t_b:.3f});',
+                        ]
+                        t_b += float(b["typing"])
+                        bub_js.append(f'tl.to("#{did}", {{height: 0, opacity: 0, duration: 0.12}}, {at + t_b - 0.1:.3f});')
+                    inner = ""
                     if b.get("text"):
-                        parts.append(f'<div class="bub">{esc(b["text"])}</div>')
+                        inner += f'<div class="bub{" me" if me else ""}">{esc(b["text"])}</div>'
                     if b.get("image"):
                         lt = f'<div class="bub-lt">{esc(b.get("link_title", ""))}</div><div class="bub-ld">{esc(b.get("link_domain", ""))}</div>' if b.get("link_title") else ""
-                        parts.append(f'<div class="bub-card"><img src="{extra(b["image"])}" alt="" />{lt}</div>')
+                        inner += f'<div class="bub-card"><img src="{extra(b["image"])}" alt="" />{lt}</div>'
+                    parts.append(f'<div class="bub-wrap{" me" if me else ""}" id="{bid}">{inner}</div>')
+                    if bi == 0 and not me:
+                        bub_js.append(f'tl.fromTo("#{bid}", {{y: 40, opacity: 0, scale: 0.9}}, {{y: 0, opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.4)"}}, {at + t_b:.3f});')
+                    else:
+                        bub_js.append(f'tl.fromTo("#{bid}", {{height: 0, opacity: 0}}, {{height: "auto", opacity: 1, duration: 0.28, ease: "power2.out"}}, {at + t_b:.3f});')
+                    t_next = t_b + float(b.get("gap", 0.6))
                 msg = f'<div class="phone-msgs" id="{cid}-msg">{"".join(parts)}</div>'
             else:
                 msg = f'<div class="phone-msg" id="{cid}-msg"><img src="{extra(c["image"])}" alt="" /></div>'
             cap = f'<div class="phone-caption" id="{cid}-cap">{emphasize(c["caption"])}</div>' if c.get("caption") else ""
+            field = (f'<div class="phone-field"><span class="pf-ph" id="{cid}-ph">Text Message · SMS</span>'
+                     f'<span class="pf-typed" id="{cid}-typed">{field_typed}</span>'
+                     f'<span class="pf-send" id="{cid}-send" style="opacity:0">&#8593;</span></div>')
             els.append(f'''
     <section id="{cid}" class="clip" data-start="{at:.3f}" data-duration="{dur:.3f}" data-track-index="7">
       <div class="phone-wrap" id="{cid}-card">
@@ -598,7 +652,7 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
           <div class="phone-island"></div><div class="phone-time">{esc(c.get("time", "11:00"))}</div>
           <div class="phone-head">{avatar}<div class="phone-name">{esc(c.get("name", ""))}</div></div>
           {msg}
-          <div class="phone-field">Text Message · SMS</div>
+          {field}
         </div></div>
         {cap}
       </div>
@@ -606,9 +660,12 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
             js += [
                 f'tl.fromTo("#{cid}-card", {{opacity: 0}}, {{opacity: 1, duration: 0.2}}, {at:.3f});',
                 f'tl.fromTo("#{cid}-phone", {{y: 900}}, {{y: 0, duration: 0.55, ease: "power3.out"}}, {at:.3f});',
-                f'tl.fromTo("#{cid}-msg", {{y: 40, opacity: 0, scale: 0.9}}, {{y: 0, opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.4)"}}, {at + 0.6:.3f});',
                 f'tl.to("#{cid}-card", {{opacity: 0, duration: 0.25}}, {at + dur - 0.25:.3f});',
             ]
+            if c.get("bubbles"):
+                js += bub_js
+            else:
+                js.append(f'tl.fromTo("#{cid}-msg", {{y: 40, opacity: 0, scale: 0.9}}, {{y: 0, opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.4)"}}, {at + 0.6:.3f});')
             if c.get("caption"):
                 js.append(f'tl.fromTo("#{cid}-cap .hw", {{y: 30, opacity: 0}}, {{y: 0, opacity: 1, duration: 0.35, stagger: 0.05, ease: "power3.out"}}, {at + 0.9:.3f});')
             quote_windows.append((at, at + dur))
