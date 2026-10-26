@@ -309,6 +309,7 @@ body { font-family: "Inter", sans-serif; color: var(--warm-white); -webkit-font-
 .pf-ph { position: absolute; left: 28px; }
 .pf-typed { position: absolute; left: 28px; right: 70px; white-space: nowrap; overflow: hidden; color: oklch(0.15 0 0); font-size: 26px; }
 .pf-typed .ch { opacity: 0; }
+@font-face { font-family: "Noto Color Emoji"; src: local("Noto Color Emoji"); }
 .bub, .pf-typed, .bub-lt { font-family: "Inter", "Noto Color Emoji", sans-serif; }
 .pf-send { position: absolute; right: 8px; top: 8px; width: 44px; height: 44px; border-radius: 50%; background: oklch(0.72 0.19 145);
   color: white; font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center; }

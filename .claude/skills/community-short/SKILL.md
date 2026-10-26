@@ -91,7 +91,6 @@ All commands run from `community-shorts/`.
      to draw sharp text bubbles instead of a screenshot, and `initials` when there is no avatar.
      A bubble with `"from": "fan"` is typed into the message box and sent as a green reply; a brand
      bubble with `"typing": seconds` shows the typing dots first. `"at"` is seconds into the card.
-     Render finals with `--workers 1` when a card uses fan replies (parallel workers drop them).
      `auto_punch` alternates a 1.12 punch-in on every other cut so jump cuts feel intentional.
    - `callouts`: timed to a phrase the speaker says with `"anchor"` (must survive the cut), or
      `"at"` seconds on the output timeline. Kinds:
