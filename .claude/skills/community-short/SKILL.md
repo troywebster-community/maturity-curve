@@ -83,6 +83,8 @@ All commands run from `community-shorts/`.
      `"hold_from": <source seconds>` freezes the picture from that point, for when the shot
      cuts away (to a graphic) a moment before the speaker finishes the word.
    - `target_s`: `[low, high]` runtime window when the brief asks for a length other than ~40s.
+   - `bug: false`: leave out the Community pill in the top-left corner (on by default).
+   - Any on-screen line can take `\n` to force a line break (e.g. a phone caption's second sentence).
    - `highlight: "text"`: color `**starred**` words and the spoken caption word blue instead of
      putting a blue box behind them.
    - `voiceover`: list of `{"file": "vo/line.wav", "at": seconds}` laid over the cut's audio

@@ -48,7 +48,9 @@ def esc(s: str) -> str:
 
 
 def emphasize(text: str) -> str:
-    """'Made **$1.2M** from text' -> marker highlight behind the starred words."""
+    """'Made **$1.2M** from text' -> marker highlight behind the starred words. A newline forces a line break."""
+    if "\n" in text:
+        return "<br/>".join(emphasize(line) for line in text.split("\n"))
     parts = re.split(r"(\*\*.+?\*\*)", text)
     out = []
     for p in parts:
@@ -473,14 +475,15 @@ def build(plan: dict, ranges: list[dict], owords: list[dict], base_duration: flo
             f'tl.to("#intro-inner", {{y: -40, opacity: 0, duration: 0.35, ease: "power2.in"}}, {intro_dur - 0.35:.3f});',
         ]
 
-    # --- persistent bug -----------------------------------------------------------------
-    bug_start = max(0.0, intro_dur - 0.1)
-    bug_dur = max(0.5, D - bug_start)
-    els.append(f'''
+    # --- persistent bug (plan "bug": false leaves it out) -------------------------------
+    if plan.get("bug", True):
+        bug_start = max(0.0, intro_dur - 0.1)
+        bug_dur = max(0.5, D - bug_start)
+        els.append(f'''
     <div id="bug-clip" class="clip" data-start="{bug_start:.3f}" data-duration="{bug_dur:.3f}" data-track-index="4">
       <div id="bug" class="wm">{wordmark("light")}</div>
     </div>''')
-    js.append(f'tl.fromTo("#bug", {{opacity: 0, x: -20}}, {{opacity: 1, x: 0, duration: 0.4, ease: "power3.out"}}, {bug_start + 0.05:.3f});')
+        js.append(f'tl.fromTo("#bug", {{opacity: 0, x: -20}}, {{opacity: 1, x: 0, duration: 0.4, ease: "power3.out"}}, {bug_start + 0.05:.3f});')
 
     # --- speaker tag --------------------------------------------------------------------
     busy: list[tuple[float, float]] = []
